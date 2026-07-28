@@ -1,8 +1,9 @@
-"use client";
+import SceneWrapper from '@/components/SceneWrapper'
+
 export default function Home() {
   return (
-    <div>
-      <a href="/dashboard">Go to Dashboard</a>
-    </div>
-  );
+    <main className="relative w-screen h-screen overflow-hidden">
+      <SceneWrapper />
+    </main>
+  )
 }
