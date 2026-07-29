@@ -40,13 +40,14 @@ import { useRef, useMemo, useEffect, Suspense } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ScrollControls, Scroll, useScroll, useGLTF } from '@react-three/drei'
 import FuzzyText from './FuzzyText'
+import CourseCardsOverlay from './CourseCardsOverlay'
+import { scrollStore } from './scrollStore'
 import {
   EffectComposer,
   Bloom,
   Vignette,
 } from '@react-three/postprocessing'
 import { BlendFunction } from 'postprocessing'
-import type { WebGLRendererParameters } from 'three'
 import * as THREE from 'three'
 
 /* ── Preload both GLB models ── */
@@ -137,6 +138,7 @@ function SceneContent() {
 
   useFrame(() => {
     const t = scroll.offset
+    scrollStore.offset = t
 
     /* ─── Camera ─── */
     const zoomT = Math.min(t / 0.5, 1)
@@ -189,8 +191,6 @@ function SceneContent() {
     if (gridGroupRef.current) gridGroupRef.current.visible = !showOld
     if (aestheticGroupRef.current) aestheticGroupRef.current.visible = !showOld
     if (oldGroupRef.current) oldGroupRef.current.visible = showOld
-
-
   })
 
   return (
@@ -305,6 +305,7 @@ export default function LandingScene() {
           </ScrollControls>
         </Suspense>
       </Canvas>
+      <CourseCardsOverlay />
     </div>
   )
 }
