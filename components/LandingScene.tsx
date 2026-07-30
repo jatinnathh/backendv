@@ -272,7 +272,7 @@ export default function LandingScene() {
       >
         <color attach="background" args={['#050008']} />
         <Suspense fallback={null}>
-          <ScrollControls pages={5} damping={0.1}>
+          <ScrollControls pages={5} damping={0.045} maxSpeed={2.5}>
             <SceneContent />
             <Scroll html style={{ width: '100%' }}>
               <div

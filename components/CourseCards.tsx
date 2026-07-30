@@ -90,7 +90,7 @@
 //             <ul className="course-card-list">
 //               {data.learn.map((item, i) => (
 //                 <li key={i}>
-//                   <span className="course-card-bullet">⚡</span>
+//                   <span className="course-card-bullet" />
 //                   {item}
 //                 </li>
 //               ))}

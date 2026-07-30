@@ -1,16 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import LandingScene from './LandingScene'
+import dynamic from 'next/dynamic'
+
+const LandingScene = dynamic(() => import('./LandingScene'), { ssr: false })
 
 export default function SceneWrapper() {
-  const [mounted, setMounted] = useState(false)
-  
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) return null
-
   return <LandingScene />
 }
