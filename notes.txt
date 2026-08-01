@@ -1,0 +1,448 @@
+- Authentication and Authorization :
+    
+    authentication: mechanism to assign an identity to a subject . to answer (WHO ARE YOU ) in a given context 
+    
+    Autherization: (What can you do ) in that platform , all your permission , the process of finding of what can you do in a particular platform.
+    
+    # Authentication
+    
+    eg: OAuth , JWT , passwordless
+    
+    HTTP was stateless ( no idea of previous requests). becamse a bottleneck , cos requirements of different states
+    
+    Marked the need for statefull websites
+    
+    ## SESSION:
+    
+    way to establish temporary server side context for each user. has some kind of memory about the user that the server can can have to remember the user when the user makes a request next time  
+    
+    working :
+    
+    1. session creation : unique session id created  when a user logged in and it stored it along the relevant user data (eg cart is )   redis → in memory persistent store 
+    2. session id was sent to the client  as a cookie . all request after this were sent with the cookie which has the session id , which made it easier for the server to fetch data for the user, either from database or in memory redis .
+        
+        web has some kind of memory for the sake of the client 
+        
+    3. these session ids had a timeout(short lived / expiry date )  .
+        
+        server creates another session id and sends again 
+        
+    
+    Problems
+    
+    retaining session data became large overhead 
+    
+    replication 
+    
+    Latency
+    
+    ## JWT (Json web Tokens):
+    
+    comapct, self contained format 
+    
+    Stateless mechanism for transferring claims in a stateless manner between different parties
+    
+    self contained tokens
+    
+    contained user data and cryptography signatures in one token (base64 encoded)
+    
+    !image.png
+    
+    compact , self contained , digitally signed , stateless , 3 part structure  Header.Payload.Signature, Base64 url encoded, Expiration 
+    
+    Cookie 
+    
+    Way of storing a piece of information (string , value ) in a users browser form the server side .  automoate the process of token sending from user to server 
+    
+    ## Types of Authentication :  stateful , stateless , API key , OAuth 2.0
+    
+    # 1. Stateful Authentication
+    
+    In **stateful authentication**, the **server stores session information** about the logged-in user.
+    
+    After login:
+    
+    - Server creates a **session**
+    - Session data is stored on the server
+    - Client receives a **session ID**
+    - Client sends session ID on every request
+    
+    ---
+    
+    ## Flow
+    
+    ```
+    User logs in
+       ↓
+    Server verifies credentials
+       ↓
+    Server creates session in memory/database
+       ↓
+    Server sends Session ID cookie
+       ↓
+    Browser sends cookie on every request
+       ↓
+    Server checks session storage
+    ```
+    
+    ---
+    
+    ## Example
+    
+    Traditional websites using:
+    
+    - PHP sessions
+    - Express sessions
+    - Django sessions
+    
+    ---
+    
+    ## Cookie Example
+    
+    ```
+    Set-Cookie: sessionId=abc123
+    ```
+    
+    Browser automatically sends:
+    
+    ```
+    Cookie: sessionId=abc123
+    ```
+    
+    ---
+    
+    ## Advantages
+    
+    - Easy to revoke sessions
+    - More control on server
+    - Good security for web apps
+    
+    ---
+    
+    ## Disadvantages
+    
+    - Server must store session data
+    - Harder to scale horizontally
+    - Requires shared session storage (Redis, DB)
+    
+    ---
+    
+    ## Common Technologies
+    
+    - Cookies
+    - Session IDs
+    - Redis session store
+    
+    ---
+    
+    # 2. Stateless Authentication
+    
+    In **stateless authentication**, the server does **NOT store session data**.
+    
+    Instead:
+    
+    - Client stores authentication token
+    - Token contains user information
+    - Server validates token on every request
+    
+    Usually done using:
+    
+    - JWT (JSON Web Token)
+    
+    ---
+    
+    ## Flow
+    
+    ```
+    User logs in
+       ↓
+    Server generates JWT
+       ↓
+    Client stores JWT
+       ↓
+    Client sends JWT in Authorization header
+       ↓
+    Server validates signature
+    ```
+    
+    ---
+    
+    ## Example Header
+    
+    ```
+    Authorization: Bearer eyJhbGciOiJIUzI1Ni...
+    ```
+    
+    ---
+    
+    ## JWT Structure
+    
+    A JWT has 3 parts:
+    
+    ```
+    header.payload.signature
+    ```
+    
+    Example:
+    
+    ```
+    eyJhbGciOi...
+    ```
+    
+    ---
+    
+    ## Advantages
+    
+    - No session storage needed
+    - Easy horizontal scaling
+    - Great for APIs and mobile apps
+    
+    ---
+    
+    ## Disadvantages
+    
+    - Harder to revoke tokens
+    - Larger request size
+    - Token theft risk if stored poorly
+    
+    ---
+    
+    ## Common Uses
+    
+    - REST APIs
+    - Mobile apps
+    - Microservices
+    
+    ---
+    
+    # Stateful vs Stateless
+    
+    | Feature | Stateful | Stateless |
+    | --- | --- | --- |
+    | Server stores session | Yes | No |
+    | Uses cookies | Usually | Optional |
+    | Scalable | Harder | Easier |
+    | Revoking access | Easy | Harder |
+    | Common token | Session ID | JWT |
+    | Best for | Traditional web apps | APIs/mobile |
+    
+    ---
+    
+    # 3. API Key Authentication
+    
+    API key authentication is mainly used for:
+    
+    - Server-to-server communication
+    - Public APIs
+    - Developer APIs
+    
+    Client sends a unique API key with requests.
+    
+    ---
+    
+    ## Example
+    
+    ```
+    x-api-key: 123456abcdef
+    ```
+    
+    or
+    
+    ```
+    Authorization: ApiKey 123456abcdef
+    ```
+    
+    ---
+    
+    ## Flow
+    
+    ```
+    Client sends API key
+       ↓
+    Server checks key in database
+       ↓
+    Access granted or denied
+    ```
+    
+    ---
+    
+    ## Advantages
+    
+    - Very simple
+    - Easy to implement
+    - Good for machine access
+    
+    ---
+    
+    ## Disadvantages
+    
+    - Usually identifies application, not user
+    - Weak security alone
+    - Keys can be leaked
+    
+    ---
+    
+    ## Common Uses
+    
+    - Weather APIs
+    - Payment gateways
+    - Internal services
+    
+    ---
+    
+    # 4. OAuth 2.0
+    
+    OAuth 2.0 is an **authorization framework**.
+    
+    Important distinction:
+    
+    - Authentication = "Who are you?"
+    - Authorization = "What can you access?"
+    
+    OAuth allows users to:
+    
+    > Grant limited access to another application without sharing passwords.
+    > 
+    
+    OAuth 1.0 workflow below : 
+    
+    Shares tokens : a token has a limited access to your account on a platform 
+    
+    eg: token has only ability to read my contacts
+    
+    resource owner , client , resources server , authorization server 
+    
+    problem aith Oauth 1.0 → complex to implement , and crpytographic singatures (error prone )
+    
+    Oauth 2.0 introduced bearer tokens,  allowed developers to choose flows absed on the app type.                          
+    
+    ## Example
+    
+    "Login with Google"
+    
+    Instead of giving password to another app:
+    
+    - Google authenticates user
+    - Google gives access token
+    - App uses token
+    
+    ---
+    
+    ## Real Example
+    
+    You use a website:
+    
+    ```
+    "Continue with Google"
+    ```
+    
+    Flow:
+    
+    ```
+    User clicks Google login
+       ↓
+    Redirected to Google
+       ↓
+    Google authenticates user
+       ↓
+    Google asks for permissions
+       ↓
+    Google sends authorization code
+       ↓
+    App exchanges code for access token
+    ```
+    
+    ---
+    
+    ## Main OAuth Components
+    
+    | Component | Meaning |
+    | --- | --- |
+    | Resource Owner | User |
+    | Client | Application |
+    | Authorization Server | Google/GitHub |
+    | Resource Server | API server |
+    | Access Token | Temporary credential |
+    
+    ---
+    
+    ## Common OAuth Tokens
+    
+    ### Access Token
+    
+    Used to access APIs.
+    
+    ```
+    Authorization: Bearer access_token
+    ```
+    
+    ---
+    
+    ### Refresh Token
+    
+    Used to generate new access tokens without logging in again.
+    
+    Delegation → providing password of one platform to another platform 
+    
+    Open Id Connect → build on OAuth2.0
+    
+    Idtoken was introduced (Basically JWT) , had info like userid , Issue AT (Login time ) , issued authority 
+    
+    What to use when :
+    
+    Stateful : Web aps (SAAS based apps)
+    
+    Stateless : ideal for API or scalable systems 
+    
+    OAuth : third party integration 
+    
+    API key based : Server to server 
+    
+    ## Authorization : permissions of the user
+    
+    RBAC : Role based access control ( diff roles assigned different sets of permissions )
+    
+
+!image.png
+
+never send specific messages when it is about authentication . KEEP IT GENERIC ,
+
+it helps hackers to understand what the scenerio is . like user does not exist , try another user,  
+
+or if said password invalid , the hacker can brute force knowing that the suer des exist 
+
+eg , send authentication failed for all three above cases .
+
+1. timing attack 
+    
+    authentication has 3 steps 
+    
+    1. verify user 
+    2. check if user locked
+    3. check password ( hah and check from db)
+    
+    hashing takes time so hackers can observer the time taken to authenticate to understand which step failed . eg: if authentication took long time and then failed. means the password entered was wrong , noe the hackers now the user exists but password is wrong . if authen fails immdiatly , the hackers know the user is does not exist .
+    
+    to counter this , introduce timeout so that the full step always takes a constant time . not letting the hackers know at which step the auth failed . 
+    
+    eg . set the full auth process to be the max possible time at each try , even when user does not exist and when password was wrong . this wasy hackers dont know at which step did the authentication failed                     
+    
+
+- VALIDATIONS AND TRANSFORMATIONS
+    
+    before the data/call to api enter the server ,  we want to make sure all this data are in the Expected format , the user is sending the data in exact format the API is accepting .
+    
+    middleware function reused 
+    
+    !image.png
+    
+    !image.png
+    
+
+Types of validation :
+
+syntactic → email or not , string follows a particular structure . 
+
+semantic → whether the provided data makes sense or not . DOB not in future 
+
+Type validation → whether the provided type follows the accepted type (forty when 40 is required ). Data type match or not .
