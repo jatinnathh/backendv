@@ -53,7 +53,8 @@ export const AnyNull = runtime.AnyNull
 export const ModelName = {
   User: 'User',
   Session: 'Session',
-  RefreshToken: 'RefreshToken'
+  RefreshToken: 'RefreshToken',
+  HttpLabUser: 'HttpLabUser'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -105,6 +106,17 @@ export const RefreshTokenScalarFieldEnum = {
 } as const
 
 export type RefreshTokenScalarFieldEnum = (typeof RefreshTokenScalarFieldEnum)[keyof typeof RefreshTokenScalarFieldEnum]
+
+
+export const HttpLabUserScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type HttpLabUserScalarFieldEnum = (typeof HttpLabUserScalarFieldEnum)[keyof typeof HttpLabUserScalarFieldEnum]
 
 
 export const SortOrder = {

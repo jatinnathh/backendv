@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import JWTInspector from "@/components/auth/JWTInspector";
 import TokenMismatchLab from "@/components/auth/TokenMismatchLab";
 import AccessTokenExpiryLab from "@/components/auth/AccessTokenExpiryLab";
@@ -11,13 +11,47 @@ import AuthenticationNotes from "@/components/auth/AuthenticationNotes";
 type StepStatus = "idle" | "active" | "success" | "error";
 
 interface Step {
+    id: string;
     name: string;
     description: string;
     status: StepStatus;
     details?: any;
 }
 
+const REGISTER_STEPS: Step[] = [
+    { id: "http_request", name: "HTTP Request", description: "POST /api/auth/register", status: "idle" },
+    { id: "validation", name: "Input Validation", description: "Validate name, email and password", status: "idle" },
+    { id: "normalize_email", name: "Normalize Email", description: "Trim and convert email to lowercase", status: "idle" },
+    { id: "database_lookup", name: "Database Lookup", description: "Check whether the user already exists", status: "idle" },
+    { id: "password_hash", name: "Password Hashing", description: "Hash the password before storing it", status: "idle" },
+    { id: "database_insert", name: "Database Insert", description: "Create the user with Prisma", status: "idle" },
+    { id: "http_response", name: "HTTP Response", description: "Return 201 Created", status: "idle" },
+];
+
+const LOGIN_STEPS: Step[] = [
+    { id: "http_request", name: "HTTP Request", description: "POST /api/auth/login", status: "idle" },
+    { id: "validation", name: "Input Validation", description: "Validate email and password", status: "idle" },
+    { id: "normalize_email", name: "Normalize Email", description: "Trim and convert email to lowercase", status: "idle" },
+    { id: "database_lookup", name: "Database Lookup", description: "Find user by email", status: "idle" },
+    { id: "password_verification", name: "Password Verification", description: "Verify hashed password", status: "idle" },
+    { id: "access_token_generation", name: "Access Token Generation", description: "Create JWT access token", status: "idle" },
+    { id: "refresh_token_generation", name: "Refresh Token Generation", description: "Create refresh token", status: "idle" },
+    { id: "session_insert", name: "Session Insert", description: "Store session in database", status: "idle" },
+    { id: "set_cookie", name: "Set-Cookie", description: "Set HttpOnly refresh cookie", status: "idle" },
+    { id: "http_response", name: "HTTP Response", description: "Return 200 OK", status: "idle" },
+];
+
+const REFRESH_STEPS: Step[] = [
+    { id: "read_cookie", name: "Read Cookie", description: "Extract refreshToken from HttpOnly cookie", status: "idle" },
+    { id: "verify_jwt", name: "Verify JWT", description: "Validate signature and expiration", status: "idle" },
+    { id: "find_session", name: "Find Session", description: "Look up session in database", status: "idle" },
+    { id: "verify_hash", name: "Verify Hash", description: "Compare refreshToken with stored hash", status: "idle" },
+    { id: "generate_access_token", name: "Generate Access Token", description: "Mint new access token", status: "idle" },
+    { id: "http_response", name: "HTTP Response", description: "Return 200 OK", status: "idle" },
+];
+
 export default function authentication() {
+    const [activeTab, setActiveTab] = useState<"register" | "login" | "jwt" | "protected" | "refresh">("register");
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -25,64 +59,39 @@ export default function authentication() {
     const [loading, setLoading] = useState(false);
     const [response, setResponse] = useState<any>(null);
 
-    const [steps, setSteps] = useState<Step[]>([
-        {
-            name: "HTTP Request",
-            description: "POST /api/auth/register",
-            status: "idle",
-        },
-        {
-            name: "Input Validation",
-            description: "Validate name, email and password",
-            status: "idle",
-        },
-        {
-            name: "Normalize Email",
-            description: "Trim and convert email to lowercase",
-            status: "idle",
-        },
-        {
-            name: "Database Lookup",
-            description: "Check whether the user already exists",
-            status: "idle",
-        },
-        {
-            name: "Password Hashing",
-            description: "Hash the password before storing it",
-            status: "idle",
-        },
-        {
-            name: "Database Insert",
-            description: "Create the user with Prisma",
-            status: "idle",
-        },
-        {
-            name: "Token Generation",
-            description: "Sign a JWT with the user's ID",
-            status: "idle",
-        },
-        {
-            name: "HTTP Response",
-            description: "Return 201 Created",
-            status: "idle",
-        },
-    ]);
-
+    const [steps, setSteps] = useState<Step[]>(REGISTER_STEPS);
     const [selectedStepIndex, setSelectedStepIndex] = useState<number | null>(null);
+
+    // Refresh Flow State
+    const [refreshFlowState, setRefreshFlowState] = useState(0); 
+    const [accessToken, setAccessToken] = useState("");
+    const [protectedResponse, setProtectedResponse] = useState<any>(null);
+
+    useEffect(() => {
+        if (activeTab === "register") setSteps(REGISTER_STEPS);
+        else if (activeTab === "login") setSteps(LOGIN_STEPS);
+        else setSteps(REFRESH_STEPS);
+        
+        setResponse(null);
+        setSelectedStepIndex(null);
+        setRefreshFlowState(0);
+        setProtectedResponse(null);
+    }, [activeTab]);
 
     function resetSteps() {
         setSteps((current) =>
             current.map((step) => ({
                 ...step,
                 status: "idle",
+                details: undefined
             }))
         );
     }
 
-    function updateStep(index: number, status: StepStatus, details?: any) {
+    function updateStep(id: string, status: StepStatus, details?: any) {
         setSteps((current) =>
-            current.map((step, i) =>
-                i === index ? { ...step, status, details: details || step.details } : step
+            current.map((step) =>
+                step.id === id ? { ...step, status, details: details || step.details } : step
             )
         );
     }
@@ -91,147 +100,94 @@ export default function authentication() {
         return new Promise((resolve) => setTimeout(resolve, ms));
     }
 
-    async function register() {
+    async function processTrace(trace: any[], responseData: any, responseStatus: number, successCode: number) {
+        for (const t of trace) {
+            updateStep(t.step, "active");
+            await sleep(300);
+            
+            // Determine status based on step metadata
+            let status: StepStatus = "success";
+            if (t.success === false || t.found === false || t.matched === false) {
+                if (t.step === "database_lookup" && activeTab === "register") {
+                    status = "success"; // In register, not found is success
+                } else if (t.step === "database_lookup" && activeTab === "login") {
+                    status = "error";
+                } else {
+                    status = "error";
+                }
+            } else if (t.found === true && activeTab === "register") {
+                 status = "error"; // In register, finding user is an error
+            }
+
+            // Exclude the 'step' property from details to keep it clean
+            const { step: _, ...details } = t;
+            updateStep(t.step, status, details);
+            
+            if (status === "error") {
+                break; // Stop animating on error
+            }
+        }
+
+        // Final HTTP Response step
+        updateStep("http_response", "active");
+        await sleep(300);
+        updateStep("http_response", responseStatus === successCode ? "success" : "error", {
+            status: responseStatus,
+            body: responseData
+        });
+    }
+
+    async function handleAuth() {
         resetSteps();
         setResponse(null);
         setLoading(true);
 
+        const endpoint = activeTab === "register" ? "/api/auth/register" : "/api/auth/login";
+        const successCode = activeTab === "register" ? 201 : 200;
+        const body = activeTab === "register" 
+            ? { name, email, password }
+            : { email, password };
+            
+        const displayBody = activeTab === "register" 
+            ? { name, email, password: password ? "••••••••" : "" }
+            : { email, password: password ? "••••••••" : "" };
+
         try {
             // Visual step 1: HTTP Request
-            updateStep(0, "active");
+            updateStep("http_request", "active");
             await sleep(500);
-            updateStep(0, "success", {
-                url: "/api/auth/register",
+            updateStep("http_request", "success", {
+                url: endpoint,
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: { name, email, password: password ? "********" : "" }
+                body: displayBody
             });
 
-            // Visual step 2: Input Validation
-            updateStep(1, "active");
-            await sleep(500);
-
-            if (!name || !email || !password || password.length < 8) {
-                updateStep(1, "error", {
-                    rules: {
-                        name: "Required",
-                        email: "Required",
-                        password: "Minimum 8 characters"
-                    },
-                    result: "Failed validation"
-                });
-                setResponse({
-                    status: 400,
-                    body: {
-                        error: "name, email and password are required",
-                    },
-                });
-                return;
-            }
-
-            updateStep(1, "success", {
-                rules: {
-                    name: "Required",
-                    email: "Required",
-                    password: "Minimum 8 characters"
-                },
-                result: "Passed validation"
-            });
-
-            // Visual step 3: Normalize Email
-            updateStep(2, "active");
-            await sleep(500);
-            updateStep(2, "success", {
-                input: `"${email}"`,
-                normalized: `"${email.trim().toLowerCase()}"`
-            });
-
-            // The remaining backend operations happen inside this request.
-            updateStep(3, "active");
-
-            const res = await fetch("/api/auth/register", {
+            const res = await fetch(endpoint, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    name,
-                    email,
-                    password,
-                }),
+                body: JSON.stringify(body),
             });
 
             const data = await res.json();
-
-            if (!res.ok) {
-                updateStep(3, "error", {
-                    query: `prisma.user.findUnique({ where: { email: "${email.trim().toLowerCase()}" } })`,
-                    result: "User already exists"
-                });
-                setResponse({
-                    status: res.status,
-                    body: data,
-                });
-                return;
+            
+            if (data.trace && Array.isArray(data.trace)) {
+                 await processTrace(data.trace, data, res.status, successCode);
+                 // Remove trace from final response block display so it isn't cluttered
+                 const { trace, ...displayData } = data;
+                 setResponse({
+                     status: res.status,
+                     body: displayData,
+                 });
+            } else {
+                 setResponse({
+                     status: res.status,
+                     body: data,
+                 });
             }
 
-            updateStep(3, "success", {
-                query: `prisma.user.findUnique({ where: { email: "${email.trim().toLowerCase()}" } })`,
-                result: "User not found (Available)"
-            });
-
-            // Visual step 4: Password Hashing
-            updateStep(4, "active");
-            await sleep(500);
-            updateStep(4, "success", {
-                algorithm: "bcrypt",
-                costFactor: 10,
-                plaintext: "********",
-                hashed: "$2b$10$xyz123mockHashedPassword..."
-            });
-
-            // Visual step 5: Database Insert
-            updateStep(5, "active");
-            await sleep(500);
-            updateStep(5, "success", {
-                query: `prisma.user.create({
-  data: {
-    name: "${name.trim()}",
-    email: "${email.trim().toLowerCase()}",
-    passwordHash: "$2b$10$xyz123..."
-  }
-})`,
-                result: { id: data.user?.id || "usr_123", email: email.trim().toLowerCase() }
-            });
-
-            // Visual step 6: Token Generation
-            updateStep(6, "active");
-            await sleep(500);
-            
-            // Generate a mock JWT for visualization
-            const mockHeader = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-            const mockPayload = btoa(JSON.stringify({ sub: data.user?.id || "usr_123", iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 3600 }));
-            const mockSignature = "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c";
-            const mockToken = `${mockHeader}.${mockPayload}.${mockSignature}`;
-            
-            updateStep(6, "success", {
-                action: "Sign JWT",
-                payload: { sub: data.user?.id || "usr_123", exp: "+1h" },
-                token: mockToken
-            });
-
-            // Visual step 7: HTTP Response
-            updateStep(7, "active");
-            await sleep(400);
-            updateStep(7, "success", {
-                status: 201,
-                body: data
-            });
-
-            setResponse({
-                status: res.status,
-                body: data,
-            });
         } catch (error) {
             setResponse({
                 status: 500,
@@ -239,6 +195,104 @@ export default function authentication() {
                     error: "Request failed",
                 },
             });
+            updateStep("http_response", "error", { error: "Request failed" });
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleRefreshFlowLogin() {
+        setSteps(LOGIN_STEPS);
+        resetSteps();
+        setLoading(true);
+        try {
+            updateStep("http_request", "active");
+            await sleep(500);
+            updateStep("http_request", "success", { url: "/api/auth/login", method: "POST" });
+            
+            const creds = { email: email || "refresh@example.com", password: password || "password123" };
+            
+            let res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(creds)
+            });
+            
+            // If user doesn't exist, auto-register them seamlessly for the lab
+            if (res.status === 401) {
+                await fetch("/api/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name: "Refresh Demo", ...creds })
+                });
+                // Try login again
+                res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(creds)
+                });
+            }
+
+            const data = await res.json();
+            if (data.trace) await processTrace(data.trace, data, res.status, 200);
+            if (res.ok) {
+                setAccessToken(data.accessToken);
+                setRefreshFlowState(1);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleRefreshFlowProtected(expectedStatus: number, nextState: number) {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/auth/protected", {
+                headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const data = await res.json();
+            setProtectedResponse({ status: res.status, data });
+            if (res.status === expectedStatus) {
+                setRefreshFlowState(nextState);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleRefreshFlowExpire() {
+        setLoading(true);
+        try {
+            const res = await fetch("/api/auth/lab/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ expiresIn: "expired" })
+            });
+            const data = await res.json();
+            setAccessToken(data.token);
+            setRefreshFlowState(3);
+            setProtectedResponse(null);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleRefreshFlowRefresh() {
+        setSteps(REFRESH_STEPS);
+        resetSteps();
+        setLoading(true);
+        try {
+            updateStep("http_request", "active"); // Let's just rely on trace
+            const res = await fetch("/api/auth/refresh", {
+                method: "POST"
+            });
+            const data = await res.json();
+            if (data.trace) await processTrace(data.trace, data, res.status, 200);
+            if (res.ok) {
+                setAccessToken(data.accessToken);
+                setRefreshFlowState(5);
+                setProtectedResponse(null);
+            }
         } finally {
             setLoading(false);
         }
@@ -248,7 +302,6 @@ export default function authentication() {
         <div className="min-h-screen bg-zinc-950 text-white p-8">
 
             {/* Header */}
-
             <div className="mb-8">
                 <div className="text-sm text-zinc-500 mb-2">
                     Backend Visualizer / Authentication
@@ -259,97 +312,218 @@ export default function authentication() {
                 </h1>
 
                 <p className="text-zinc-400 mt-2">
-                    See what happens inside the backend when a user registers.
+                    See what happens inside the backend when a user interacts with authentication.
                 </p>
             </div>
+            
+            {/* Tabs */}
+            <div className="mb-8 border-b border-zinc-800">
+                <div className="flex gap-6">
+                    {(["register", "login", "jwt", "protected", "refresh"] as const).map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`pb-4 text-sm font-medium transition-colors relative capitalize ${
+                                activeTab === tab 
+                                    ? "text-white" 
+                                    : "text-zinc-500 hover:text-zinc-300"
+                            }`}
+                        >
+                            {tab}
+                            {activeTab === tab && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-t-full" />
+                            )}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {activeTab === "jwt" ? (
+                <div className="mt-8">
+                    <JWTInspector />
+                </div>
+            ) : activeTab === "protected" ? (
+                <div className="mt-8">
+                    <ProtectedRouteLab />
+                </div>
+            ) : (
+                <>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
-                {/* LEFT SIDE */}
+                        {/* LEFT SIDE */}
 
                 <div className="border border-zinc-800 rounded-xl bg-zinc-900/50 p-6">
 
                     <div className="mb-6">
                         <h2 className="text-xl font-medium">
-                            Register User
+                            {activeTab === "register" ? "Register User" : "Login User"}
                         </h2>
 
                         <p className="text-sm text-zinc-500">
-                            POST /api/auth/register
+                            POST /api/auth/{activeTab}
                         </p>
                     </div>
 
-                    <div className="space-y-4">
+                    {activeTab !== "refresh" ? (
+                        <div className="space-y-4">
+                            
+                            {activeTab === "register" && (
+                                <div>
+                                    <label className="text-sm text-zinc-400">
+                                        Name
+                                    </label>
 
-                        <div>
-                            <label className="text-sm text-zinc-400">
-                                Name
-                            </label>
-
-                            <input
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none focus:border-zinc-600"
-                                placeholder="Jatin Nath"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-sm text-zinc-400">
-                                Email
-                            </label>
-
-                            <input
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none focus:border-zinc-600"
-                                placeholder="jatin@example.com"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-sm text-zinc-400">
-                                Password
-                            </label>
-
-                            <input
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none focus:border-zinc-600"
-                                placeholder="••••••••"
-                            />
-                        </div>
-
-                        <button
-                            onClick={register}
-                            disabled={loading}
-                            className="w-full bg-white text-black rounded-lg p-3 font-medium disabled:opacity-50"
-                        >
-                            {loading ? "Processing..." : "Create Account"}
-                        </button>
-
-                    </div>
-
-                    {/* Request body */}
-
-                    <div className="mt-8">
-                        <div className="text-sm text-zinc-500 mb-2">
-                            REQUEST BODY
-                        </div>
-
-                        <pre className="bg-black border border-zinc-800 rounded-lg p-4 text-sm overflow-auto">
-                            {JSON.stringify(
-                                {
-                                    name,
-                                    email,
-                                    password: password ? "••••••••" : "",
-                                },
-                                null,
-                                2
+                                    <input
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none focus:border-zinc-600"
+                                        placeholder="Jatin Nath"
+                                    />
+                                </div>
                             )}
-                        </pre>
-                    </div>
+
+                            <div>
+                                <label className="text-sm text-zinc-400">
+                                    Email
+                                </label>
+
+                                <input
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none focus:border-zinc-600"
+                                    placeholder="jatin@example.com"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="text-sm text-zinc-400">
+                                    Password
+                                </label>
+
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none focus:border-zinc-600"
+                                    placeholder="••••••••"
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleAuth}
+                                disabled={loading}
+                                className="w-full bg-white text-black rounded-lg p-3 font-medium disabled:opacity-50"
+                            >
+                                {loading ? "Processing..." : (activeTab === "register" ? "Create Account" : "Login")}
+                            </button>
+
+                            <div className="mt-8">
+                                <div className="text-sm text-zinc-500 mb-2">
+                                    REQUEST BODY
+                                </div>
+                                <pre className="bg-black border border-zinc-800 rounded-lg p-4 text-sm overflow-auto">
+                                    {JSON.stringify(
+                                        activeTab === "register" ? {
+                                            name,
+                                            email,
+                                            password: password ? "••••••••" : "",
+                                        } : {
+                                            email,
+                                            password: password ? "••••••••" : "",
+                                        },
+                                        null,
+                                        2
+                                    )}
+                                </pre>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="text-sm text-zinc-400 mb-6">
+                                Experience the complete lifecycle of a refresh token. Follow the steps below in order.
+                            </div>
+                            
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-4 p-3 border border-zinc-800 rounded-lg bg-black/50">
+                                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-medium text-xs">1</div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-sm">Login</div>
+                                        <div className="text-xs text-zinc-500">Get Access Token & Refresh Cookie</div>
+                                    </div>
+                                    <button onClick={handleRefreshFlowLogin} disabled={loading || refreshFlowState > 0} className="px-4 py-2 bg-white text-black text-xs font-medium rounded-lg disabled:opacity-30">
+                                        {refreshFlowState > 0 ? "Done ✓" : "Run"}
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4 p-3 border border-zinc-800 rounded-lg bg-black/50">
+                                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-medium text-xs">2</div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-sm">Call Protected API</div>
+                                        <div className="text-xs text-zinc-500">Test the valid Access Token</div>
+                                    </div>
+                                    <button onClick={() => handleRefreshFlowProtected(200, 2)} disabled={loading || refreshFlowState !== 1} className="px-4 py-2 bg-white text-black text-xs font-medium rounded-lg disabled:opacity-30">
+                                        {refreshFlowState > 1 ? "Done ✓" : "Run"}
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4 p-3 border border-zinc-800 rounded-lg bg-black/50">
+                                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-medium text-xs">3</div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-sm">Simulate Expiry</div>
+                                        <div className="text-xs text-zinc-500">Fast-forward 15 minutes</div>
+                                    </div>
+                                    <button onClick={handleRefreshFlowExpire} disabled={loading || refreshFlowState !== 2} className="px-4 py-2 bg-white text-black text-xs font-medium rounded-lg disabled:opacity-30">
+                                        {refreshFlowState > 2 ? "Done ✓" : "Run"}
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4 p-3 border border-zinc-800 rounded-lg bg-black/50">
+                                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-medium text-xs">4</div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-sm">Call Protected API</div>
+                                        <div className="text-xs text-zinc-500">Should fail with 401</div>
+                                    </div>
+                                    <button onClick={() => handleRefreshFlowProtected(401, 4)} disabled={loading || refreshFlowState !== 3} className="px-4 py-2 bg-white text-black text-xs font-medium rounded-lg disabled:opacity-30">
+                                        {refreshFlowState > 3 ? "Done ✓" : "Run"}
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4 p-3 border border-zinc-800 rounded-lg bg-black/50 border-purple-500/30 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-purple-500"></div>
+                                    <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center font-medium text-xs">5</div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-sm text-purple-400">Refresh Token</div>
+                                        <div className="text-xs text-zinc-500">POST /api/auth/refresh</div>
+                                    </div>
+                                    <button onClick={handleRefreshFlowRefresh} disabled={loading || refreshFlowState !== 4} className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white text-xs font-medium rounded-lg disabled:opacity-30 transition-colors">
+                                        {refreshFlowState > 4 ? "Done ✓" : "Run"}
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center gap-4 p-3 border border-zinc-800 rounded-lg bg-black/50">
+                                    <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-medium text-xs">6</div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-sm">Retry API</div>
+                                        <div className="text-xs text-zinc-500">Test the newly minted Access Token</div>
+                                    </div>
+                                    <button onClick={() => handleRefreshFlowProtected(200, 6)} disabled={loading || refreshFlowState !== 5} className="px-4 py-2 bg-white text-black text-xs font-medium rounded-lg disabled:opacity-30">
+                                        {refreshFlowState > 5 ? "Done ✓" : "Run"}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {protectedResponse && (
+                                <div className={`mt-4 border rounded-lg p-4 text-sm ${protectedResponse.status === 200 ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                                    <div className="flex justify-between mb-2">
+                                        <span className="text-zinc-400">API Response</span>
+                                        <span className={protectedResponse.status === 200 ? "text-green-400" : "text-red-400"}>HTTP {protectedResponse.status}</span>
+                                    </div>
+                                    <pre className="font-mono text-xs">{JSON.stringify(protectedResponse.data, null, 2)}</pre>
+                                </div>
+                            )}
+
+                        </div>
+                    )}
 
                 </div>
 
@@ -367,7 +541,7 @@ export default function authentication() {
 
                     <div>
                         {steps.map((step, index) => (
-                            <div key={step.name}>
+                            <div key={step.id}>
                                 <div
                                     onClick={() => setSelectedStepIndex(selectedStepIndex === index ? null : index)}
                                     className={`
@@ -418,7 +592,7 @@ export default function authentication() {
                                     {selectedStepIndex === index && step.details && (
                                         <div className="mt-4 pt-4 border-t border-zinc-800/50">
                                             <div className="text-xs text-zinc-500 mb-2 uppercase tracking-widest">Internal State</div>
-                                            <pre className="bg-black/50 border border-zinc-800/50 rounded-lg p-3 text-xs text-zinc-300 overflow-x-auto">
+                                            <pre className="bg-black/50 border border-zinc-800/50 rounded-lg p-3 text-xs text-zinc-300 overflow-x-auto whitespace-pre-wrap break-words">
                                                 {JSON.stringify(step.details, null, 2)}
                                             </pre>
                                         </div>
@@ -455,13 +629,16 @@ export default function authentication() {
 
                 </div>
 
-                <pre className="bg-black border border-zinc-800 rounded-lg p-4 text-sm overflow-auto min-h-32">
+                <pre className="bg-black border border-zinc-800 rounded-lg p-4 text-sm overflow-auto min-h-32 whitespace-pre-wrap break-words">
                     {response
                         ? JSON.stringify(response.body, null, 2)
                         : "// Send a request to see the response"}
                 </pre>
 
             </div>
+            
+            </>
+            )}
 
             <div className="mt-10 space-y-6">
                 <div>
@@ -480,14 +657,14 @@ export default function authentication() {
                 </div>
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    <JWTInspector />
+                    {activeTab !== "jwt" && <JWTInspector />}
                     <TokenMismatchLab />
                 </div>
 
                 <AccessTokenExpiryLab />
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                    <ProtectedRouteLab />
+                    {activeTab !== "protected" && <ProtectedRouteLab />}
                     <TimingAttackLab />
                 </div>
 

@@ -56,3 +56,8 @@ export type Session = Prisma.SessionModel
  * 
  */
 export type RefreshToken = Prisma.RefreshTokenModel
+/**
+ * Model HttpLabUser
+ * 
+ */
+export type HttpLabUser = Prisma.HttpLabUserModel

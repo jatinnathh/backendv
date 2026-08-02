@@ -22,35 +22,12 @@ export default function ProtectedRouteLab() {
             });
             token = (await res.json()).token;
         } else if (tokenType === "expired") {
-            // A token generated in the past or we can just ask server for a 1s token and wait, or manually craft it.
-            // For simplicity, we can fetch a 1s token and wait 1.5s
             const res = await fetch("/api/auth/lab/token", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ expiresIn: "5s" }) // minimum allowed is 5s
+                body: JSON.stringify({ expiresIn: "expired" })
             });
-            const data = await res.json();
-            token = data.token;
-            // Hack to make it expired: alter the payload exp directly and don't care about signature because our backend might reject signature first. 
-            // Wait, we need signature to be valid to reach the expiry check!
-            // Let's actually wait 5 seconds? Or we can just use a hardcoded expired token.
-            // A hardcoded token would need the correct secret, which we don't have.
-            // Let's just generate a real expired token by sending a custom token generation if we had one.
-            // But our lab only does 5s minimum.
-            // Just for the visual lab effect, we will do a trick: we'll simulate the backend steps in the UI based on knowledge, and then hit the real backend with a tampered token (signature invalid).
-            // Actually, the user asked to hit the real endpoint. Let's hit the backend. For 'expired', it will fail signature if we tamper, or if we wait 5s it'll be expired. Let's just create a dummy string for random and tampered.
-            token = data.token; 
-            // We'll replace the payload with an expired one. Signature will be invalid. So it will fail signature check before expiry check on our real backend.
-            // If they really want to see it fail at expiry, they use the Expiry Lab. In this lab we can just use tampered for 'expired' since the error is the same, or just show the simulated steps.
-        }
-        
-        if (tokenType === "expired") {
-            // Craft an expired token (signature will be invalid so backend says 401)
-            const parts = token.split(".");
-            const payload = JSON.parse(atob(parts[1]));
-            payload.exp = Math.floor(Date.now()/1000) - 10000;
-            const newPayload = btoa(JSON.stringify(payload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-            token = `${parts[0]}.${newPayload}.${parts[2]}`;
+            token = (await res.json()).token;
         } else if (tokenType === "tampered") {
             const res = await fetch("/api/auth/lab/token", {
                 method: "POST",
@@ -99,8 +76,6 @@ export default function ProtectedRouteLab() {
             return "skip";
         }
         if (tokenType === "expired") {
-            // Note: our backend will actually fail at Verify because we tampered with the exp without signing.
-            // But we can visually show it failing at Expiry for educational purposes as requested.
             if (step === "extract") return "pass";
             if (step === "verify") return "pass";
             if (step === "exp") return "fail";

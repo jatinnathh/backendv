@@ -20,41 +20,31 @@ export default function TimingAttackLab() {
         if (!email || !password) return;
         
         setLoading(true);
-        
-        // Simulate network latency (2-5ms)
-        const networkJitter = Math.floor(Math.random() * 4) + 2;
-        
-        // Simulate DB lookup time (10-15ms)
-        const dbLookup = Math.floor(Math.random() * 6) + 10;
-        
-        // Simulate bcrypt hash time (85-95ms)
-        const hashTime = Math.floor(Math.random() * 11) + 85;
 
-        const isExisting = email === "existing@example.com";
-        let duration = 0;
+        try {
+            const res = await fetch("/api/auth/lab/timing", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, password, protectionOn })
+            });
 
-        if (protectionOn) {
-            // With protection: we always do a dummy hash if user not found
-            duration = networkJitter + dbLookup + hashTime;
-        } else {
-            // Without protection: early exit if user not found
-            if (isExisting) {
-                duration = networkJitter + dbLookup + hashTime;
-            } else {
-                duration = networkJitter + dbLookup;
+            if (res.ok) {
+                const data = await res.json();
+                
+                // Add some network jitter visualization if we want, or just use the total backend time
+                const networkJitter = Math.floor(Math.random() * 4) + 2; 
+                const duration = data.totalDuration + networkJitter;
+                
+                setResults(prev => [
+                    { email: data.email, exists: data.exists, duration },
+                    ...prev
+                ].slice(0, 5));
             }
-        }
-
-        // Add some random variation (±2ms) to make it look realistic
-        duration += (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 3);
-
-        setTimeout(() => {
-            setResults(prev => [
-                { email, exists: isExisting, duration },
-                ...prev
-            ].slice(0, 5)); // keep last 5
+        } catch (error) {
+            console.error("Timing lab fetch error", error);
+        } finally {
             setLoading(false);
-        }, 500); // UI visual delay
+        }
     };
 
     return (

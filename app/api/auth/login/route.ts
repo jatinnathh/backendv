@@ -16,10 +16,14 @@ import {
 } from "@/lib/auth/jwt";
 
 export async function POST(request: NextRequest) {
+    const trace: any[] = [];
+    trace.push({ step: "validation", status: "active" });
+
     try {
         const { email, password } = await request.json();
 
         if (!email || !password) {
+            trace.push({ step: "validation", success: false, result: "Missing fields" });
             return NextResponse.json(
                 {
                     error: "Email and password are required",
@@ -30,14 +34,23 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        trace.push({ step: "validation", success: true });
+        
+        trace.push({ step: "normalize_email", status: "active" });
         const normalizedEmail = email.trim().toLowerCase();
+        trace.push({ step: "normalize_email", before: email, after: normalizedEmail });
+
+        trace.push({ step: "database_lookup", status: "active" });
+        const dbLookupStart = Date.now();
         const user = await prisma.user.findUnique({
             where: {
                 email: normalizedEmail,
             },
         });
+        const dbLookupEnd = Date.now();
 
         if (!user) {
+            trace.push({ step: "database_lookup", operation: "User.findUnique", found: false, durationMs: dbLookupEnd - dbLookupStart });
             return NextResponse.json(
                 {
                     error: "Invalid email or password",
@@ -47,12 +60,20 @@ export async function POST(request: NextRequest) {
                 }
             );
         }
+        
+        trace.push({ step: "database_lookup", operation: "User.findUnique", found: true, durationMs: dbLookupEnd - dbLookupStart });
+
+        trace.push({ step: "password_verification", status: "active" });
+        const passVerifyStart = Date.now();
         const passwordValid = await verifyPassword(password, user.passwordHash);
+        const passVerifyEnd = Date.now();
 
         if (!passwordValid) {
+            trace.push({ step: "password_verification", algorithm: "bcrypt", matched: false, durationMs: passVerifyEnd - passVerifyStart });
             return NextResponse.json(
                 {
                     error: "Invalid email or password",
+                    trace,
                 },
                 {
                     status: 401,
@@ -60,10 +81,18 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        trace.push({ step: "password_verification", algorithm: "bcrypt", matched: true, durationMs: passVerifyEnd - passVerifyStart });
 
+        trace.push({ step: "access_token_generation", status: "active" });
         const accessToken = await createAccessToken(user.id, user.role);
+        trace.push({ step: "access_token_generation", expiresIn: "15m", payload: { sub: user.id, role: user.role, type: "access" } });
 
+        trace.push({ step: "refresh_token_generation", status: "active" });
         const refreshToken = await createRefreshToken(user.id);
+        trace.push({ step: "refresh_token_generation", expiresIn: "7d" });
+
+        trace.push({ step: "session_insert", status: "active" });
+        const sessionInsertStart = Date.now();
 
         const refreshTokenHash =
             await hashPassword(refreshToken);
@@ -80,9 +109,15 @@ export async function POST(request: NextRequest) {
                 expiresAt,
             },
         });
+        const sessionInsertEnd = Date.now();
+        trace.push({ step: "session_insert", operation: "Session.create", success: true, durationMs: sessionInsertEnd - sessionInsertStart });
+
+        trace.push({ step: "set_cookie", status: "active" });
+        trace.push({ step: "set_cookie", attributes: { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "strict", path: "/", maxAge: 604800 } });
+
         const response = NextResponse.json({
             message: "Login successful",
-
+            trace,
             accessToken,
 
             user: {
@@ -117,6 +152,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
             {
                 error: "Internal server error",
+                trace
             },
             {
                 status: 500,

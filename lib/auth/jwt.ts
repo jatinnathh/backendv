@@ -1,3 +1,6 @@
+
+// lib\auth\jwt.ts
+
 import { SignJWT, jwtVerify } from "jose";
 
 const accessSecret = new TextEncoder().encode(
@@ -13,6 +16,11 @@ export async function createAccessToken(
     role: string,
     expiresIn = "15m"
 ) {
+    let exp: number | string = expiresIn;
+    if (expiresIn === "expired") {
+        exp = Math.floor(Date.now() / 1000) - 3600; // 1 hour ago
+    }
+
     return new SignJWT({
         role,
         type: "access",
@@ -22,7 +30,7 @@ export async function createAccessToken(
         })
         .setSubject(userId)
         .setIssuedAt()
-        .setExpirationTime(expiresIn)
+        .setExpirationTime(exp)
         .sign(accessSecret);
 }
 

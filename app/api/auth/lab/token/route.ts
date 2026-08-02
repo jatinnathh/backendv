@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
     try {
         const { expiresIn } = await request.json();
 
-        const allowedExpiry = ["5s", "10s", "30s", "1m"];
+        const allowedExpiry = ["5s", "10s", "30s", "1m", "expired"];
 
         if (!allowedExpiry.includes(expiresIn)) {
             return NextResponse.json(

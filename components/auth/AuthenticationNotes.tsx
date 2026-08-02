@@ -1,3 +1,5 @@
+// components\auth\AuthenticationNotes.tsx
+
 "use client";
 
 import { useState } from "react";
