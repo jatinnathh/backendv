@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { verifyPassword } from "@/lib/auth/password";
 
-const DUMMY_HASH = "$2b$12$QHh9TqZl1h5P5jO9W1Jd4e0e5j8c9m0v2a5b6c7d8e9f0a1b2c3d4";
+const DUMMY_HASH = "$2b$12$GCRGqNKKjJMGPpC.eZ3eC.5dd.zuMQ.LBgIW9fjq.qYrGXFvrUciO";
 
 export async function POST(request: NextRequest) {
     try {
@@ -20,17 +20,16 @@ export async function POST(request: NextRequest) {
             where: { email: email.trim().toLowerCase() }
         });
 
-        // Use a dynamic dummy user for the lab existing user if it's not in the DB
-        if (!user && email === "existing@example.com") {
-            user = {
-                id: "dummy-id",
-                email: "existing@example.com",
-                passwordHash: DUMMY_HASH,
-                name: "Demo User",
-                role: "USER",
-                createdAt: new Date(),
-                updatedAt: new Date()
-            };
+        // Ensure the lab demo user exists in the actual database
+        if (!user && email === "timing-demo@backendvisualizer.dev") {
+            user = await prisma.user.create({
+                data: {
+                    email: "timing-demo@backendvisualizer.dev",
+                    passwordHash: DUMMY_HASH,
+                    name: "Demo User",
+                    role: "USER"
+                }
+            });
         }
         const dbLookupDuration = Date.now() - dbLookupStart;
 

@@ -161,6 +161,36 @@ export default function AuthenticationNotes() {
                 </div>
             )
         },
+        {
+            title: "Hybrid Token Architecture",
+            content: (
+                <div className="space-y-4 text-sm text-zinc-300">
+                    <p>
+                        Pure stateless authentication means the server remembers nothing, which makes revoking access before expiration impossible. Most robust systems use a hybrid approach:
+                    </p>
+                    <div className="bg-black/50 border border-zinc-800 rounded p-4 font-mono text-xs my-4 text-center whitespace-pre overflow-x-auto text-zinc-400">
+{`                    LOGIN
+                      │
+             ┌────────┴────────┐
+             ▼                 ▼
+       Access Token       Refresh Token
+           JWT                 JWT
+             │                  │
+       short lived         long lived
+             │                  │
+       Bearer header       HttpOnly Cookie
+             │                  │
+             ▼                  ▼
+      signature check       Session DB
+             │                  │
+        STATELESS             STATEFUL`}
+                    </div>
+                    <p>
+                        The access token is verified statelessly for high performance. The refresh token is verified against the database, giving you a centralized chokepoint to revoke compromised sessions.
+                    </p>
+                </div>
+            )
+        },
     ];
 
     return (

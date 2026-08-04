@@ -54,7 +54,7 @@ export const ModelName = {
   User: 'User',
   Session: 'Session',
   RefreshToken: 'RefreshToken',
-  HttpLabUser: 'HttpLabUser'
+  HttpLabItem: 'HttpLabItem'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -108,15 +108,15 @@ export const RefreshTokenScalarFieldEnum = {
 export type RefreshTokenScalarFieldEnum = (typeof RefreshTokenScalarFieldEnum)[keyof typeof RefreshTokenScalarFieldEnum]
 
 
-export const HttpLabUserScalarFieldEnum = {
+export const HttpLabItemScalarFieldEnum = {
   id: 'id',
   name: 'name',
-  email: 'email',
+  description: 'description',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
-export type HttpLabUserScalarFieldEnum = (typeof HttpLabUserScalarFieldEnum)[keyof typeof HttpLabUserScalarFieldEnum]
+export type HttpLabItemScalarFieldEnum = (typeof HttpLabItemScalarFieldEnum)[keyof typeof HttpLabItemScalarFieldEnum]
 
 
 export const SortOrder = {

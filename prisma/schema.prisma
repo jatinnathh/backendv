@@ -46,12 +46,13 @@ model RefreshToken {
   createdAt DateTime @default(now())
 }
 
-model HttpLabUser {
-  id        String   @id @default(uuid())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  @@map("http_lab_users")
+model HttpLabItem {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("http_lab_items")
 }

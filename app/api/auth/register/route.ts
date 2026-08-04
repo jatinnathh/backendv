@@ -3,7 +3,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { prisma } from "@/lib/prisma";
-import { users } from "@/lib/auth/users";
+
 import { hashPassword } from "@/lib/auth/password";
 
 export async function POST(request: NextRequest) {

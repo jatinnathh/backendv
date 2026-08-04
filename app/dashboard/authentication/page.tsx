@@ -22,9 +22,9 @@ const REGISTER_STEPS: Step[] = [
     { id: "http_request", name: "HTTP Request", description: "POST /api/auth/register", status: "idle" },
     { id: "validation", name: "Input Validation", description: "Validate name, email and password", status: "idle" },
     { id: "normalize_email", name: "Normalize Email", description: "Trim and convert email to lowercase", status: "idle" },
-    { id: "database_lookup", name: "Database Lookup", description: "Check whether the user already exists", status: "idle" },
-    { id: "password_hash", name: "Password Hashing", description: "Hash the password before storing it", status: "idle" },
-    { id: "database_insert", name: "Database Insert", description: "Create the user with Prisma", status: "idle" },
+    { id: "database_lookup", name: "REAL · Prisma", description: "Check whether the user already exists", status: "idle" },
+    { id: "password_hash", name: "REAL · bcrypt", description: "Hash the password before storing it", status: "idle" },
+    { id: "database_insert", name: "REAL · Prisma", description: "Create the user with Prisma", status: "idle" },
     { id: "http_response", name: "HTTP Response", description: "Return 201 Created", status: "idle" },
 ];
 
@@ -32,21 +32,29 @@ const LOGIN_STEPS: Step[] = [
     { id: "http_request", name: "HTTP Request", description: "POST /api/auth/login", status: "idle" },
     { id: "validation", name: "Input Validation", description: "Validate email and password", status: "idle" },
     { id: "normalize_email", name: "Normalize Email", description: "Trim and convert email to lowercase", status: "idle" },
-    { id: "database_lookup", name: "Database Lookup", description: "Find user by email", status: "idle" },
-    { id: "password_verification", name: "Password Verification", description: "Verify hashed password", status: "idle" },
-    { id: "access_token_generation", name: "Access Token Generation", description: "Create JWT access token", status: "idle" },
-    { id: "refresh_token_generation", name: "Refresh Token Generation", description: "Create refresh token", status: "idle" },
-    { id: "session_insert", name: "Session Insert", description: "Store session in database", status: "idle" },
+    { id: "database_lookup", name: "REAL · Prisma", description: "Find user by email", status: "idle" },
+    { id: "password_verification", name: "REAL · bcrypt", description: "Verify hashed password", status: "idle" },
+    { id: "access_token_generation", name: "REAL · jose", description: "Create JWT access token", status: "idle" },
+    { id: "refresh_token_generation", name: "REAL · jose", description: "Create refresh token", status: "idle" },
+    { id: "session_insert", name: "REAL · Prisma", description: "Store session in database", status: "idle" },
     { id: "set_cookie", name: "Set-Cookie", description: "Set HttpOnly refresh cookie", status: "idle" },
     { id: "http_response", name: "HTTP Response", description: "Return 200 OK", status: "idle" },
 ];
 
 const REFRESH_STEPS: Step[] = [
     { id: "read_cookie", name: "Read Cookie", description: "Extract refreshToken from HttpOnly cookie", status: "idle" },
-    { id: "verify_jwt", name: "Verify JWT", description: "Validate signature and expiration", status: "idle" },
-    { id: "find_session", name: "Find Session", description: "Look up session in database", status: "idle" },
-    { id: "verify_hash", name: "Verify Hash", description: "Compare refreshToken with stored hash", status: "idle" },
-    { id: "generate_access_token", name: "Generate Access Token", description: "Mint new access token", status: "idle" },
+    { id: "verify_jwt", name: "REAL · jose", description: "Validate signature and expiration", status: "idle" },
+    { id: "find_session", name: "REAL · Prisma", description: "Look up session in database", status: "idle" },
+    { id: "verify_hash", name: "REAL · bcrypt", description: "Compare refreshToken with stored hash", status: "idle" },
+    { id: "generate_access_token", name: "REAL · jose", description: "Mint new access token", status: "idle" },
+    { id: "http_response", name: "HTTP Response", description: "Return 200 OK", status: "idle" },
+];
+
+const LOGOUT_STEPS: Step[] = [
+    { id: "read_cookie", name: "Read Cookie", description: "Extract refreshToken from HttpOnly cookie", status: "idle" },
+    { id: "verify_jwt", name: "REAL · jose", description: "Validate signature and expiration", status: "idle" },
+    { id: "delete_session", name: "REAL · Prisma", description: "Delete session from database", status: "idle" },
+    { id: "clear_cookie", name: "Clear-Cookie", description: "Clear HttpOnly refresh cookie", status: "idle" },
     { id: "http_response", name: "HTTP Response", description: "Return 200 OK", status: "idle" },
 ];
 
@@ -298,6 +306,27 @@ export default function authentication() {
         }
     }
 
+    async function handleRefreshFlowLogout() {
+        setSteps(LOGOUT_STEPS);
+        resetSteps();
+        setLoading(true);
+        try {
+            updateStep("http_request", "active"); // Let's just rely on trace
+            const res = await fetch("/api/auth/logout", {
+                method: "POST"
+            });
+            const data = await res.json();
+            if (data.trace) await processTrace(data.trace, data, res.status, 200);
+            if (res.ok) {
+                setAccessToken("");
+                setRefreshFlowState(6);
+                setProtectedResponse(null);
+            }
+        } finally {
+            setLoading(false);
+        }
+    }
+
     return (
         <div className="min-h-screen bg-zinc-950 text-white p-8">
 
@@ -469,8 +498,8 @@ export default function authentication() {
                                 <div className="flex items-center gap-4 p-3 border border-zinc-800 rounded-lg bg-black/50">
                                     <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center font-medium text-xs">3</div>
                                     <div className="flex-1">
-                                        <div className="font-medium text-sm">Simulate Expiry</div>
-                                        <div className="text-xs text-zinc-500">Fast-forward 15 minutes</div>
+                                        <div className="font-medium text-sm">Issue an already-expired access token</div>
+                                        <div className="text-xs text-zinc-500">LAB INPUT · Fast-forward expiration</div>
                                     </div>
                                     <button onClick={handleRefreshFlowExpire} disabled={loading || refreshFlowState !== 2} className="px-4 py-2 bg-white text-black text-xs font-medium rounded-lg disabled:opacity-30">
                                         {refreshFlowState > 2 ? "Done ✓" : "Run"}
@@ -510,6 +539,18 @@ export default function authentication() {
                                         {refreshFlowState > 5 ? "Done ✓" : "Run"}
                                     </button>
                                 </div>
+
+                                <div className="flex items-center gap-4 p-3 border border-zinc-800 rounded-lg bg-red-500/5 border-red-500/30 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-red-500"></div>
+                                    <div className="w-8 h-8 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-medium text-xs">7</div>
+                                    <div className="flex-1">
+                                        <div className="font-medium text-sm text-red-400">Logout</div>
+                                        <div className="text-xs text-zinc-500">Revoke session & clear cookie</div>
+                                    </div>
+                                    <button onClick={handleRefreshFlowLogout} disabled={loading || refreshFlowState !== 6} className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-xs font-medium rounded-lg disabled:opacity-30 transition-colors">
+                                        {refreshFlowState > 6 ? "Done ✓" : "Run"}
+                                    </button>
+                                </div>
                             </div>
 
                             {protectedResponse && (
@@ -535,8 +576,11 @@ export default function authentication() {
                         Backend Execution
                     </h2>
 
-                    <p className="text-zinc-500 text-sm mb-6">
+                    <p className="text-zinc-500 text-sm mb-2">
                         Follow the request through your backend.
+                    </p>
+                    <p className="text-zinc-500 text-xs mb-6 italic border-l-2 border-zinc-700 pl-3">
+                        <strong className="text-zinc-400">Execution Replay</strong> — The operations shown are real backend operations. The VISUAL REPLAY animation runs from execution telemetry after the request completes.
                     </p>
 
                     <div>

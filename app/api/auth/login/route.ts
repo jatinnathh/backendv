@@ -2,7 +2,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { users } from "@/lib/auth/users";
+
 import { prisma } from "@/lib/prisma";
 
 import {
@@ -88,7 +88,8 @@ export async function POST(request: NextRequest) {
         trace.push({ step: "access_token_generation", expiresIn: "15m", payload: { sub: user.id, role: user.role, type: "access" } });
 
         trace.push({ step: "refresh_token_generation", status: "active" });
-        const refreshToken = await createRefreshToken(user.id);
+        const sid = crypto.randomUUID();
+        const refreshToken = await createRefreshToken(user.id, sid);
         trace.push({ step: "refresh_token_generation", expiresIn: "7d" });
 
         trace.push({ step: "session_insert", status: "active" });
@@ -104,6 +105,7 @@ export async function POST(request: NextRequest) {
 
         await prisma.session.create({
             data: {
+                id: sid,
                 userId: user.id,
                 refreshTokenHash,
                 expiresAt,

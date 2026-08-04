@@ -35,10 +35,12 @@ export async function createAccessToken(
 }
 
 export async function createRefreshToken(
-    userId: string
+    userId: string,
+    sid: string
 ) {
     return new SignJWT({
         type: "refresh",
+        sid,
     })
         .setProtectedHeader({
             alg: "HS256",

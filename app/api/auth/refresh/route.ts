@@ -29,12 +29,9 @@ export async function POST(request: NextRequest) {
         trace.push({ step: "verify_jwt", success: true, payload });
 
         trace.push({ step: "find_session", status: "active" });
-        const session = await prisma.session.findFirst({
+        const session = await prisma.session.findUnique({
             where: {
-                userId: payload.sub
-            },
-            orderBy: {
-                createdAt: 'desc'
+                id: payload.sid as string
             }
         });
 

@@ -9,7 +9,7 @@ type TimingResult = {
 };
 
 export default function TimingAttackLab() {
-    const [email, setEmail] = useState("existing@example.com");
+    const [email, setEmail] = useState("timing-demo@backendvisualizer.dev");
     const [password, setPassword] = useState("wrongpassword");
     const [protectionOn, setProtectionOn] = useState(false);
     const [results, setResults] = useState<TimingResult[]>([]);
@@ -92,7 +92,7 @@ export default function TimingAttackLab() {
                         className="w-full bg-black border border-zinc-800 rounded-lg p-3 text-sm focus:border-zinc-500 outline-none"
                     />
                     <div className="text-xs text-zinc-500 mt-2">
-                        Try <span className="text-purple-400 cursor-pointer" onClick={() => setEmail("existing@example.com")}>existing@example.com</span> or <span className="text-purple-400 cursor-pointer" onClick={() => setEmail("unknown@example.com")}>unknown@example.com</span>
+                        Try <span className="text-purple-400 cursor-pointer" onClick={() => setEmail("timing-demo@backendvisualizer.dev")}>timing-demo@backendvisualizer.dev</span> or <span className="text-purple-400 cursor-pointer" onClick={() => setEmail("unknown@example.com")}>unknown@example.com</span>
                     </div>
                 </div>
                 <div>

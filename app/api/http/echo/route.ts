@@ -1,159 +1,95 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, userAgent } from "next/server";
 
-async function echo(request: NextRequest) {
-  const trace: any[] = [];
-  const requestStart = Date.now();
+async function handler(request: NextRequest) {
 
-  trace.push({
-    step: "request_received",
-    method: request.method,
-    status: "completed",
-  });
-
-  // --------------------------
-  // Parse URL
-  // --------------------------
-
-  trace.push({
-    step: "url_parsing",
-    status: "active",
-  });
-
+  const start = Date.now();
   const url = new URL(request.url);
-
-  trace.push({
-    step: "url_parsing",
-    status: "completed",
-    path: url.pathname,
-    queryCount: url.searchParams.size,
-  });
-
-  // --------------------------
-  // Parse Query Parameters
-  // --------------------------
-
-  trace.push({
-    step: "query_parameters",
-    status: "active",
-  });
-
+  const trace: any[] = [
+    {
+      step: 'reqeust received',
+      type: 'REAL',
+      method: request.method,
+    },
+  ];
   const query = Object.fromEntries(
     url.searchParams.entries()
   );
 
   trace.push({
-    step: "query_parameters",
-    status: "completed",
+    step: 'query_parsed',
+    type: 'REAL',
+    path: url.pathname,
     query,
   });
 
-  // --------------------------
-  // Parse Headers
-  // --------------------------
-
-  trace.push({
-    step: "headers_parsing",
-    status: "active",
-  });
-
   const headers = {
-    contentType: request.headers.get("content-type"),
-    accept: request.headers.get("accept"),
-    authorization: request.headers.has("authorization")
-      ? "Bearer ********"
-      : null,
-    userAgent: request.headers.get("user-agent"),
-    xLabHeader: request.headers.get("x-lab-header"),
+    contentType: request.headers.get('content-type'),
+    accept: request.headers.get('accept'),
+    userAgent: request.headers.get('user-agent'),
+    authorization: request.headers.has('authorization') ? '[REDACTED]' : null,
+    xLabHeader: request.headers.has('x-lab-header')
   };
 
   trace.push({
-    step: "headers_parsing",
-    status: "completed",
-    headers,
+    step: 'headers_read',
+    type: 'REAL'
   });
 
-  // --------------------------
-  // Parse Body
-  // --------------------------
+  let body: unknown = null;
+  if (request.method !== "GET" && request.method !== "HEAD") {
+    try {
+      const contentType = request.headers.get("content-type");
 
-  trace.push({
-    step: "body_parsing",
-    status: "active",
-  });
-
-  let body: any = null;
-
-  try {
-    if (
-      request.method !== "GET" &&
-      request.method !== "HEAD"
-    ) {
-      const contentType =
-        request.headers.get("content-type") ?? "";
-
-      if (contentType.includes("application/json")) {
+      if (contentType?.includes('application/json')) {
         body = await request.json();
       } else {
-        body = await request.text();
+        body = await request.text()
       }
+
+      trace.push({
+        step: 'body_parsed',
+        type: "REAL",
+        parder: contentType?.includes('application/json')
+          ? "request.json()"
+          : "request.text()",
+      })
+
+    } catch {
+      return NextResponse.json(
+        {
+          error: 'could nto parse request body',
+          trace,
+        }, {
+        status: 400
+      }
+      );
     }
-
-    trace.push({
-      step: "body_parsing",
-      status: "completed",
-    });
-  } catch {
-    trace.push({
-      step: "body_parsing",
-      status: "failed",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Invalid request body",
-        trace,
-      },
-      {
-        status: 400,
-      }
-    );
   }
 
-  // --------------------------
-  // Response
-  // --------------------------
-
   trace.push({
-    step: "response_serialization",
-    status: "completed",
+    step: "response_created",
+    type: "REAL",
+    status: 200,
   });
-
   return NextResponse.json({
     request: {
       method: request.method,
-
-      url: request.url,
-
       path: url.pathname,
-
       query,
-
       headers,
-
       body,
     },
 
-    response: {
-      contentType: "application/json",
-      durationMs: Date.now() - requestStart,
+    meta: {
+      durationMs: Date.now() - start,
     },
-
     trace,
-  });
+  }
+  );
 }
 
-export const GET = echo;
-export const POST = echo;
-export const PUT = echo;
-export const PATCH = echo;
-export const DELETE = echo;
+export const GET = handler;
+export const POST = handler;
+export const PUT = handler;
+export const PATCH = handler;
+export const DELETE = handler;

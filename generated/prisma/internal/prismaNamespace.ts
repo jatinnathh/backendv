@@ -400,7 +400,7 @@ export const ModelName = {
   User: 'User',
   Session: 'Session',
   RefreshToken: 'RefreshToken',
-  HttpLabUser: 'HttpLabUser'
+  HttpLabItem: 'HttpLabItem'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -416,7 +416,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "refreshToken" | "httpLabUser"
+    modelProps: "user" | "session" | "refreshToken" | "httpLabItem"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -642,77 +642,77 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
-    HttpLabUser: {
-      payload: Prisma.$HttpLabUserPayload<ExtArgs>
-      fields: Prisma.HttpLabUserFieldRefs
+    HttpLabItem: {
+      payload: Prisma.$HttpLabItemPayload<ExtArgs>
+      fields: Prisma.HttpLabItemFieldRefs
       operations: {
         findUnique: {
-          args: Prisma.HttpLabUserFindUniqueArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload> | null
+          args: Prisma.HttpLabItemFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload> | null
         }
         findUniqueOrThrow: {
-          args: Prisma.HttpLabUserFindUniqueOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>
+          args: Prisma.HttpLabItemFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>
         }
         findFirst: {
-          args: Prisma.HttpLabUserFindFirstArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload> | null
+          args: Prisma.HttpLabItemFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload> | null
         }
         findFirstOrThrow: {
-          args: Prisma.HttpLabUserFindFirstOrThrowArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>
+          args: Prisma.HttpLabItemFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>
         }
         findMany: {
-          args: Prisma.HttpLabUserFindManyArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>[]
+          args: Prisma.HttpLabItemFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>[]
         }
         create: {
-          args: Prisma.HttpLabUserCreateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>
+          args: Prisma.HttpLabItemCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>
         }
         createMany: {
-          args: Prisma.HttpLabUserCreateManyArgs<ExtArgs>
+          args: Prisma.HttpLabItemCreateManyArgs<ExtArgs>
           result: BatchPayload
         }
         createManyAndReturn: {
-          args: Prisma.HttpLabUserCreateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>[]
+          args: Prisma.HttpLabItemCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>[]
         }
         delete: {
-          args: Prisma.HttpLabUserDeleteArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>
+          args: Prisma.HttpLabItemDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>
         }
         update: {
-          args: Prisma.HttpLabUserUpdateArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>
+          args: Prisma.HttpLabItemUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>
         }
         deleteMany: {
-          args: Prisma.HttpLabUserDeleteManyArgs<ExtArgs>
+          args: Prisma.HttpLabItemDeleteManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateMany: {
-          args: Prisma.HttpLabUserUpdateManyArgs<ExtArgs>
+          args: Prisma.HttpLabItemUpdateManyArgs<ExtArgs>
           result: BatchPayload
         }
         updateManyAndReturn: {
-          args: Prisma.HttpLabUserUpdateManyAndReturnArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>[]
+          args: Prisma.HttpLabItemUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>[]
         }
         upsert: {
-          args: Prisma.HttpLabUserUpsertArgs<ExtArgs>
-          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabUserPayload>
+          args: Prisma.HttpLabItemUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$HttpLabItemPayload>
         }
         aggregate: {
-          args: Prisma.HttpLabUserAggregateArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.AggregateHttpLabUser>
+          args: Prisma.HttpLabItemAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateHttpLabItem>
         }
         groupBy: {
-          args: Prisma.HttpLabUserGroupByArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.HttpLabUserGroupByOutputType>[]
+          args: Prisma.HttpLabItemGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.HttpLabItemGroupByOutputType>[]
         }
         count: {
-          args: Prisma.HttpLabUserCountArgs<ExtArgs>
-          result: runtime.Types.Utils.Optional<Prisma.HttpLabUserCountAggregateOutputType> | number
+          args: Prisma.HttpLabItemCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.HttpLabItemCountAggregateOutputType> | number
         }
       }
     }
@@ -790,15 +790,15 @@ export const RefreshTokenScalarFieldEnum = {
 export type RefreshTokenScalarFieldEnum = (typeof RefreshTokenScalarFieldEnum)[keyof typeof RefreshTokenScalarFieldEnum]
 
 
-export const HttpLabUserScalarFieldEnum = {
+export const HttpLabItemScalarFieldEnum = {
   id: 'id',
   name: 'name',
-  email: 'email',
+  description: 'description',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
-export type HttpLabUserScalarFieldEnum = (typeof HttpLabUserScalarFieldEnum)[keyof typeof HttpLabUserScalarFieldEnum]
+export type HttpLabItemScalarFieldEnum = (typeof HttpLabItemScalarFieldEnum)[keyof typeof HttpLabItemScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1040,7 +1040,7 @@ export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
   session?: Prisma.SessionOmit
   refreshToken?: Prisma.RefreshTokenOmit
-  httpLabUser?: Prisma.HttpLabUserOmit
+  httpLabItem?: Prisma.HttpLabItemOmit
 }
 
 /* Types for Logging */

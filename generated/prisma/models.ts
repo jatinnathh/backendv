@@ -11,5 +11,5 @@
 export type * from './models/User'
 export type * from './models/Session'
 export type * from './models/RefreshToken'
-export type * from './models/HttpLabUser'
+export type * from './models/HttpLabItem'
 export type * from './commonInputTypes'
