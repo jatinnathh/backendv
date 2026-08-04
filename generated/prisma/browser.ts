@@ -37,3 +37,8 @@ export type RefreshToken = Prisma.RefreshTokenModel
  * 
  */
 export type HttpLabItem = Prisma.HttpLabItemModel
+/**
+ * Model HttpLabUser
+ * 
+ */
+export type HttpLabUser = Prisma.HttpLabUserModel

@@ -56,3 +56,13 @@ model HttpLabItem {
 
   @@map("http_lab_items")
 }
+
+model HttpLabUser {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("http_lab_users")
+}
