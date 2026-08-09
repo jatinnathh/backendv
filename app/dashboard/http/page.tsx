@@ -1,12 +1,12 @@
-'use client'
+"use client";
 
+import React from "react";
+import { HttpLab } from "../../../components/http-lab/HttpLab";
 
-
-export default function http() {
-
+export default function HttpLabPage() {
     return (
-        <div>
-            This is http page
-        </div>
-    )
+        <main className="h-screen w-full">
+            <HttpLab />
+        </main>
+    );
 }
