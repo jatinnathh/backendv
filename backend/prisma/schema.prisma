@@ -65,3 +65,17 @@ model HttpLabUser {
 
   @@map("http_lab_users")
 }
+
+model RestUser {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  age       Int?
+  role      String   @default("USER")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+  @@index([name])
+  @@index([role])
+}

@@ -152,47 +152,207 @@ export const query = (req, res) => {
 
 // ─── Placeholder Lab Endpoints ──────────────────────────────────────────────
 export const params = (req, res) => {
-    res.json({ params: req.params, trace: [{ step: "request_received", type: "REAL" }] });
+    const { trace, add } = createTrace();
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    add("route_matched", { type: "SERVER", route: "/api/http/params/:id" });
+    add("path_parameters_parsed", { type: "SERVER", params: req.params });
+    add("response_sent", { type: "SERVER", status: 200 });
+
+    res.json({ params: req.params, trace });
 };
 
 export const body = (req, res) => {
-    res.json({ body: req.body, trace: [{ step: "request_received", type: "REAL" }] });
+    const { trace, add } = createTrace();
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    add("headers_parsed", { type: "SERVER", contentType: req.headers["content-type"] });
+    
+    let parser = "none";
+    if (req.headers["content-type"]?.includes("application/json")) parser = "express.json()";
+    else if (req.headers["content-type"]?.includes("text/")) parser = "express.text()";
+    
+    add("body_parsed", { type: "SERVER", parser, bytes: req.headers["content-length"] || "unknown" });
+    add("response_sent", { type: "SERVER", status: 200 });
+
+    res.json({ body: req.body, trace });
 };
 
 export const headers = (req, res) => {
-    res.json({ headers: req.headers, trace: [{ step: "request_received", type: "REAL" }] });
+    const { trace, add } = createTrace();
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    
+    const importantHeaders = {
+        host: req.headers["host"],
+        "user-agent": req.headers["user-agent"],
+        accept: req.headers["accept"],
+        "content-type": req.headers["content-type"],
+        authorization: req.headers["authorization"] ? "[PRESENT]" : undefined,
+        "x-lab-header": req.headers["x-lab-header"]
+    };
+    
+    add("headers_parsed", { type: "SERVER", count: Object.keys(req.headers).length });
+    add("response_sent", { type: "SERVER", status: 200 });
+
+    res.json({ 
+        allHeaders: req.headers,
+        importantHeaders,
+        trace 
+    });
 };
 
 export const status = (req, res) => {
+    const { trace, add } = createTrace();
     const code = parseInt(req.params.code) || 200;
-    res.status(code).json({ code, trace: [{ step: "request_received", type: "REAL" }] });
+    
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    
+    const statusMessages = {
+        200: "OK",
+        201: "Created",
+        204: "No Content",
+        301: "Moved Permanently",
+        302: "Found",
+        400: "Bad Request",
+        401: "Unauthorized",
+        403: "Forbidden",
+        404: "Not Found",
+        429: "Too Many Requests",
+        500: "Internal Server Error",
+        503: "Service Unavailable"
+    };
+
+    add("response_created", { type: "SERVER", status: code, message: statusMessages[code] || "Unknown" });
+    add("response_sent", { type: "SERVER" });
+
+    res.status(code).json({ 
+        code, 
+        message: statusMessages[code] || "Unknown",
+        description: "Status code is metadata about the outcome of the request.",
+        trace 
+    });
 };
 
 export const cookies = (req, res) => {
-    res.json({ cookies: req.cookies, trace: [{ step: "request_received", type: "REAL" }] });
+    const { trace, add } = createTrace();
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    add("cookies_parsed", { type: "SERVER", cookies: req.cookies });
+    
+    const action = req.query.action;
+    
+    if (action === "set") {
+        res.cookie("lab_user", "Jatin", { httpOnly: false, sameSite: "lax" });
+        add("cookie_set", { type: "SERVER", name: "lab_user", value: "Jatin" });
+        add("response_sent", { type: "SERVER", status: 200 });
+        return res.json({ message: "Cookie set", trace });
+    }
+    
+    if (action === "delete" || action === "clear") {
+        res.clearCookie("lab_user");
+        add("cookie_cleared", { type: "SERVER", name: "lab_user" });
+        add("response_sent", { type: "SERVER", status: 200 });
+        return res.json({ message: "Cookie cleared", trace });
+    }
+
+    add("response_sent", { type: "SERVER", status: 200 });
+    res.json({ 
+        cookies: req.cookies, 
+        message: "Read cookies from request",
+        trace 
+    });
 };
 
 export const contentType = (req, res) => {
-    res.json({ contentType: req.headers["content-type"], trace: [{ step: "request_received", type: "REAL" }] });
+    const { trace, add } = createTrace();
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    add("content_type_parsed", { type: "SERVER", requestContentType: req.headers["content-type"] });
+    
+    const requestedFormat = req.headers["accept"] || "";
+    
+    if (requestedFormat.includes("text/plain")) {
+        add("response_content_type_set", { type: "SERVER", format: "text/plain" });
+        res.type('text/plain');
+        res.send("Hello from Express\n\n(Note: Trace not available in plain text response)");
+        return;
+    }
+    
+    add("response_content_type_set", { type: "SERVER", format: "application/json" });
+    add("response_sent", { type: "SERVER", status: 200 });
+    res.json({ 
+        message: "Hello from Express", 
+        requestContentType: req.headers["content-type"],
+        trace 
+    });
 };
 
 export const redirect = (req, res) => {
+    const { trace, add } = createTrace();
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    add("redirect_created", { type: "SERVER", status: 302, location: "/api/http/echo" });
+    
     res.redirect(302, "/api/http/echo");
 };
 
 export const delay = (req, res) => {
+    const { trace, add } = createTrace();
+    const ms = parseInt(req.query.ms) || 1000;
+    
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    add("delay_started", { type: "SERVER", durationMs: ms });
+    
     setTimeout(() => {
-        res.json({ delayed: true, trace: [{ step: "request_received", type: "REAL" }] });
-    }, 1000);
+        add("delay_ended", { type: "SERVER" });
+        add("response_sent", { type: "SERVER", status: 200 });
+        res.json({ delayed: true, durationMs: ms, trace });
+    }, ms);
 };
 
 export const cache = (req, res) => {
-    res.setHeader("Cache-Control", "public, max-age=3600");
-    res.json({ cached: true, trace: [{ step: "request_received", type: "REAL" }] });
+    const { trace, add } = createTrace();
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    
+    const etag = '"abc123"';
+    const clientEtag = req.headers["if-none-match"];
+    
+    add("etag_generated", { type: "SERVER", etag });
+    
+    if (clientEtag === etag) {
+        add("etag_comparison", { type: "SERVER", match: true });
+        add("not_modified", { type: "SERVER", status: 304 });
+        return res.status(304).end();
+    }
+    
+    add("etag_comparison", { type: "SERVER", match: false });
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.setHeader("ETag", etag);
+    add("response_created", { type: "SERVER", status: 200, headers: { "Cache-Control": "public, max-age=60", "ETag": etag } });
+    
+    res.json({ cached: false, data: "This is some cacheable data", trace });
 };
 
 export const corsLab = (req, res) => {
-    res.json({ cors: "enabled", trace: [{ step: "request_received", type: "REAL" }] });
+    const { trace, add } = createTrace();
+    
+    if (req.method === "OPTIONS") {
+        add("preflight_request_received", { type: "SERVER", method: req.method, origin: req.headers.origin });
+        
+        res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+        res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, PATCH, DELETE");
+        res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Lab-Header");
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+        
+        add("cors_headers_set", { type: "SERVER" });
+        add("preflight_approved", { type: "SERVER", status: 200 });
+        
+        return res.status(200).json({ preflight: true, trace });
+    }
+    
+    add("request_received", { type: "SERVER", method: req.method, path: req.originalUrl });
+    add("cors_check_passed", { type: "SERVER", origin: req.headers.origin });
+    
+    res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    
+    add("response_sent", { type: "SERVER", status: 200 });
+    res.json({ cors: "enabled", method: req.method, trace });
 };
 
 // ─── /api/http/users ────────────────────────────────────────────────────────
