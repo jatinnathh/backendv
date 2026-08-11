@@ -9,5 +9,6 @@ export default function Home() {
     <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
       <button style={{ color: "white", backgroundColor: "black", padding: "10px", borderRadius: "10px", cursor: "pointer" }} onClick={() => router.push("/dashboard")}>Go to Dashboard</button>
     </div>
+
   )
 }

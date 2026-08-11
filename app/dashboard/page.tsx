@@ -11,6 +11,7 @@ export default function Home() {
       <button style={{ color: "white", backgroundColor: "red" }} onClick={() => router.push("/dashboard/authentication")}> GO to Authentication page</button>
 
       <button style={{ color: "white", backgroundColor: "blue" }} onClick={() => router.push("/dashboard/http")}> GO to HTTP page</button>
+      <button style={{ color: 'white', backgroundColor: 'purple' }} onClick={() => router.push("/dashboard/rest")}> GO TO REST page</button>
     </div>
   );
 }

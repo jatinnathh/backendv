@@ -279,6 +279,19 @@ export async function createUser(req, res, next) {
         });
 
 
+        if (!req.body.name || !req.body.email) {
+            add("validation", {
+                type: "SERVER",
+                status: "failed",
+                reason: "name and email are required",
+            });
+
+            return res.status(400).json({
+                error: "name and email are required",
+                trace,
+            });
+        }
+
         const email =
             req.body.email.trim().toLowerCase();
 
