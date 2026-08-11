@@ -1,6 +1,6 @@
 import React from "react";
 import { HttpRequestOptions } from "../../../lib/http/api";
-import { HttpLabConfig } from "../../../lib/http/labs";
+import { ExperimentConfig } from "../../../lib/http/labs";
 
 export const RequestBuilder = ({ 
     request, 
@@ -9,7 +9,7 @@ export const RequestBuilder = ({
 }: { 
     request: HttpRequestOptions; 
     setRequest: (req: HttpRequestOptions) => void;
-    lab: HttpLabConfig;
+    lab: ExperimentConfig;
 }) => {
     
     // Helpers to update specific parts of the request
