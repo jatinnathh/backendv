@@ -3,7 +3,7 @@ import { CheckCircle2, XCircle, Clock, Database, Code, Search, Settings } from "
 
 interface TraceStep {
     step: string;
-    type?: "REAL" | "MOCK";
+    type?: "SERVER" | "CLIENT" | "EDUCATIONAL";
     status?: "active" | "completed" | "failed";
     operation?: string;
     success?: boolean;
@@ -57,7 +57,7 @@ export const TraceTimeline = ({ trace = [] }: { trace: TraceStep[] }) => {
                                 
                                 <div className="flex items-center space-x-2 mt-1 text-xs text-neutral-500">
                                     <span className="px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">
-                                        {step.type || "REAL"}
+                                        {step.type || "SERVER"}
                                     </span>
                                     
                                     {step.operation && (

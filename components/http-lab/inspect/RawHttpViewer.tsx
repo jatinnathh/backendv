@@ -1,14 +1,21 @@
 import React from "react";
+import { HttpRequestOptions, HttpResponse } from "../../../lib/http/api";
 
-export const RawHttpViewer = ({ request, response }: { request: any, response: any }) => {
+export const RawHttpViewer = ({ request, response }: { request: HttpRequestOptions, response: HttpResponse | null }) => {
     
-    // Construct RAW Request String
-    const url = new URL(`http://localhost:8000${request.path || "/api/http/echo"}`);
-    Object.entries(request.query || {}).forEach(([k, v]) => url.searchParams.set(k, v as string));
+    // Construct actual sent request details
+    let pathWithQuery = request.path;
+    const queryParams = new URLSearchParams();
+    Object.entries(request.query || {}).forEach(([k, v]) => {
+        if (v) queryParams.set(k, v);
+    });
+    const queryString = queryParams.toString();
+    if (queryString) {
+        pathWithQuery += `?${queryString}`;
+    }
     
     const requestLines = [
-        `${request.method || "GET"} ${url.pathname}${url.search} HTTP/1.1`,
-        `Host: localhost:8000`,
+        `${request.method || "GET"} ${pathWithQuery} HTTP/1.1`
     ];
 
     const reqHeaders = { ...request.headers };
@@ -20,20 +27,21 @@ export const RawHttpViewer = ({ request, response }: { request: any, response: a
         if (v) requestLines.push(`${k}: ${v}`);
     });
 
-    requestLines.push(""); // empty line before body
     if (request.body) {
+        requestLines.push(""); // empty line before body
         requestLines.push(request.body);
     }
 
-    // Construct RAW Response String
+    // Construct actual received response details
     const responseLines = [];
     if (response) {
         responseLines.push(`HTTP/1.1 ${response.status} ${response.statusText}`);
         Object.entries(response.headers || {}).forEach(([k, v]) => {
             responseLines.push(`${k}: ${v}`);
         });
-        responseLines.push("");
+        
         if (response.data) {
+            responseLines.push("");
             responseLines.push(typeof response.data === 'object' ? JSON.stringify(response.data, null, 2) : response.data);
         }
     }
@@ -42,7 +50,7 @@ export const RawHttpViewer = ({ request, response }: { request: any, response: a
         <div className="flex flex-col space-y-4">
             <div className="border border-neutral-800 rounded-lg overflow-hidden bg-neutral-950 font-mono text-sm">
                 <div className="bg-neutral-900 px-4 py-2 border-b border-neutral-800 text-neutral-400 text-xs font-semibold tracking-wider flex justify-between">
-                    <span>RAW REQUEST</span>
+                    <span>REQUEST SENT</span>
                 </div>
                 <div className="p-4 overflow-x-auto text-neutral-300">
                     <pre className="whitespace-pre-wrap break-all">{requestLines.join("\n")}</pre>
@@ -52,7 +60,7 @@ export const RawHttpViewer = ({ request, response }: { request: any, response: a
             {response && (
                 <div className="border border-neutral-800 rounded-lg overflow-hidden bg-neutral-950 font-mono text-sm">
                     <div className="bg-neutral-900 px-4 py-2 border-b border-neutral-800 text-neutral-400 text-xs font-semibold tracking-wider flex justify-between">
-                        <span>RAW RESPONSE</span>
+                        <span>RESPONSE RECEIVED</span>
                         <span className={`${response.status < 400 ? 'text-green-400' : 'text-red-400'}`}>
                             {response.duration}ms
                         </span>

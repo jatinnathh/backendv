@@ -1,6 +1,6 @@
 import React from "react";
-import { HttpRequestOptions } from "../../lib/http/api";
-import { HttpLabConfig } from "../../lib/http/labs";
+import { HttpRequestOptions } from "../../../lib/http/api";
+import { HttpLabConfig } from "../../../lib/http/labs";
 
 export const RequestBuilder = ({ 
     request, 

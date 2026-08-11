@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes from './routes/auth.routes.js';
 import httpRoutes from './routes/http.routes.js';
 import notifyRoutes from './routes/notify.routes.js';
+import restRoutes from './routes/rest.routes.js';
 
 import { errorHandler } from './middleware/error.middleware.js';
 const app = express();
@@ -31,7 +32,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/http', httpRoutes);
 app.use('/api/notify', notifyRoutes);
-
+app.use('/api/rest/v1', restRoutes);
 app.use(errorHandler)
 
 export default app;
