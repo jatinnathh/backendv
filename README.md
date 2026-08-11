@@ -9,7 +9,6 @@ An interactive, visual learning platform designed to demystify backend engineeri
 - **30** Live API Endpoints implemented across 4 primary modules (HTTP, REST, Auth, Notifications)
 - **1** Live Express.js Server with custom request tracing middleware
 - **6** Architectural Layers visualized in real-time (HTTP → Express → Controller → Service → Prisma → Response)
-- **100%** Real Execution (No mocked UI traces—what is displayed is what the backend actually processed)
 
 ---
 
