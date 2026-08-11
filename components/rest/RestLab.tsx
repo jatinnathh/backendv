@@ -1,5 +1,12 @@
 "use client";
 
+import { useMemo, useState } from "react";
+
+import RestRequestBuilder from "./RestRequestBuilder";
+import RestExecutionTrace from "./RestExecutionTrace";
+import RestResponse from "./RestResponse";
+import RestNotes from "./RestNotes";
+
 type HttpMethod =
     | "GET"
     | "POST"
@@ -7,155 +14,306 @@ type HttpMethod =
     | "PATCH"
     | "DELETE";
 
-interface Props {
-    method: HttpMethod;
-    setMethod: (value: HttpMethod) => void;
+type TraceEvent = {
+    step?: string;
+    type?: string;
+    timestamp?: string;
+    status?: string | number;
+    [key: string]: any;
+};
 
-    id: string;
-    setId: (value: string) => void;
+type ResponseState = {
+    status: number;
+    duration: number;
+    headers: Record<string, string>;
+    body: any;
+} | null;
 
-    name: string;
-    setName: (value: string) => void;
+const API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "http://localhost:8000";
 
-    email: string;
-    setEmail: (value: string) => void;
+export default function RestLab() {
+    const [method, setMethod] =
+        useState<HttpMethod>("GET");
 
-    age: string;
-    setAge: (value: string) => void;
+    const [id, setId] =
+        useState("");
 
-    role: string;
-    setRole: (value: string) => void;
+    const [name, setName] =
+        useState("Jatin Nath");
 
-    page: string;
-    setPage: (value: string) => void;
+    const [email, setEmail] =
+        useState("jatin@restlab.com");
 
-    limit: string;
-    setLimit: (value: string) => void;
+    const [age, setAge] =
+        useState("21");
 
-    search: string;
-    setSearch: (value: string) => void;
+    const [role, setRole] =
+        useState("USER");
 
-    filterRole: string;
-    setFilterRole: (value: string) => void;
+    const [page, setPage] =
+        useState("1");
 
-    sortBy: string;
-    setSortBy: (value: string) => void;
+    const [limit, setLimit] =
+        useState("5");
 
-    order: string;
-    setOrder: (value: string) => void;
+    const [search, setSearch] =
+        useState("");
 
-    endpoint: string;
+    const [filterRole, setFilterRole] =
+        useState("");
 
-    loading: boolean;
+    const [sortBy, setSortBy] =
+        useState("createdAt");
 
-    onExecute: () => void;
-}
+    const [order, setOrder] =
+        useState("desc");
 
-export default function RestRequestBuilder({
-    method,
-    setMethod,
+    const [response, setResponse] =
+        useState<ResponseState>(null);
 
-    id,
-    setId,
+    const [trace, setTrace] =
+        useState<TraceEvent[]>([]);
 
-    name,
-    setName,
+    const [loading, setLoading] =
+        useState(false);
 
-    email,
-    setEmail,
+    const [error, setError] =
+        useState<string | null>(null);
 
-    age,
-    setAge,
+    const [activeSection, setActiveSection] =
+        useState<
+            "crud" |
+            "pagination" |
+            "errors" |
+            "concepts"
+        >("crud");
 
-    role,
-    setRole,
 
-    page,
-    setPage,
+    const endpoint = useMemo(() => {
 
-    limit,
-    setLimit,
+        if (
+            method === "GET" &&
+            !id
+        ) {
+            const params = new URLSearchParams();
 
-    search,
-    setSearch,
+            params.set("page", page);
+            params.set("limit", limit);
 
-    filterRole,
-    setFilterRole,
+            if (search) {
+                params.set("search", search);
+            }
 
-    sortBy,
-    setSortBy,
+            if (filterRole) {
+                params.set("role", filterRole);
+            }
 
-    order,
-    setOrder,
+            params.set("sortBy", sortBy);
+            params.set("order", order);
 
-    endpoint,
+            return `${API_URL}/api/rest/v1/users?${params.toString()}`;
+        }
 
-    loading,
+        if (id && method !== "POST") {
+            return `${API_URL}/api/rest/v1/users/${id}`;
+        }
 
-    onExecute,
-}: Props) {
+        return `${API_URL}/api/rest/v1/users`;
+    }, [
+        method,
+        id,
+        page,
+        limit,
+        search,
+        filterRole,
+        sortBy,
+        order,
+    ]);
 
-    const needsBody =
-        method === "POST" ||
-        method === "PUT" ||
-        method === "PATCH";
+
+    async function executeRequest() {
+
+        setLoading(true);
+        setError(null);
+        setTrace([]);
+        setResponse(null);
+
+        const start =
+            performance.now();
+
+        const body =
+            method === "POST" ||
+            method === "PUT" ||
+            method === "PATCH"
+                ? {
+                    name,
+                    email,
+                    age:
+                        age === ""
+                            ? undefined
+                            : Number(age),
+                    role,
+                }
+                : undefined;
+
+
+        try {
+
+            const requestHeaders: Record<string, string> = {};
+
+            if (body) {
+                requestHeaders[
+                    "Content-Type"
+                ] = "application/json";
+            }
+
+
+            const res = await fetch(endpoint, {
+                method,
+
+                headers:
+                    requestHeaders,
+
+                body:
+                    body
+                        ? JSON.stringify(body)
+                        : undefined,
+
+                credentials: "include",
+            });
+
+
+            const duration =
+                Math.round(
+                    performance.now() - start
+                );
+
+
+            const headers: Record<string, string> = {};
+
+            res.headers.forEach(
+                (value, key) => {
+                    headers[key] = value;
+                }
+            );
+
+
+            let data: any = null;
+
+            const contentType =
+                res.headers.get(
+                    "content-type"
+                );
+
+
+            if (
+                contentType?.includes(
+                    "application/json"
+                )
+            ) {
+                data = await res.json();
+            } else {
+                data = await res.text();
+            }
+
+
+            setResponse({
+                status: res.status,
+                duration,
+                headers,
+                body: data,
+            });
+
+
+            if (
+                data &&
+                Array.isArray(data.trace)
+            ) {
+                setTrace(data.trace);
+            }
+
+        } catch (err) {
+
+            console.error(err);
+
+            setError(
+                "Could not connect to the Express backend."
+            );
+
+        } finally {
+
+            setLoading(false);
+
+        }
+    }
 
 
     return (
-        <div className="border border-zinc-800 rounded-xl bg-zinc-900/50 p-6">
+        <div className="min-h-screen bg-zinc-950 text-white p-6 md:p-8">
 
-            <div className="mb-6">
+            {/* HEADER */}
 
-                <h2 className="text-xl font-medium">
-                    REST Request Builder
-                </h2>
+            <div className="mb-8">
 
-                <p className="text-sm text-zinc-500 mt-1">
-                    Send a real request to the Express backend.
+                <div className="text-sm text-zinc-500 mb-2">
+                    Backend Visualizer / REST APIs
+                </div>
+
+                <h1 className="text-3xl font-semibold">
+                    REST API Lab
+                </h1>
+
+                <p className="text-zinc-400 mt-2 max-w-3xl">
+                    Build real REST requests and watch them travel
+                    through Express, validation, controllers, services,
+                    Prisma and PostgreSQL.
                 </p>
 
             </div>
 
 
-            {/* METHOD */}
+            {/* NAVIGATION */}
 
-            <div>
+            <div className="border-b border-zinc-800 mb-8">
 
-                <label className="text-sm text-zinc-400">
-                    HTTP Method
-                </label>
-
-                <div className="flex flex-wrap gap-2 mt-2">
+                <div className="flex gap-6 overflow-x-auto">
 
                     {[
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "PATCH",
-                        "DELETE",
-                    ].map((item) => (
+                        ["crud", "CRUD & Resources"],
+                        ["pagination", "Pagination"],
+                        ["errors", "Errors & Validation"],
+                        ["concepts", "REST Concepts"],
+                    ].map(([value, label]) => (
 
                         <button
-                            key={item}
+                            key={value}
                             onClick={() =>
-                                setMethod(
-                                    item as HttpMethod
+                                setActiveSection(
+                                    value as typeof activeSection
                                 )
                             }
                             className={`
-                                px-4
-                                py-2
-                                rounded-lg
+                                pb-4
                                 text-sm
-                                border
-                                transition
-                                ${method === item
-                                    ? "bg-white text-black border-white"
-                                    : "bg-zinc-950 text-zinc-400 border-zinc-800 hover:border-zinc-600"
+                                whitespace-nowrap
+                                relative
+                                transition-colors
+                                ${
+                                    activeSection === value
+                                        ? "text-white"
+                                        : "text-zinc-500 hover:text-zinc-300"
                                 }
                             `}
                         >
-                            {item}
+
+                            {label}
+
+                            {activeSection === value && (
+                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-white rounded-t-full" />
+                            )}
+
                         </button>
 
                     ))}
@@ -165,344 +323,388 @@ export default function RestRequestBuilder({
             </div>
 
 
-            {/* URL */}
+            {activeSection === "crud" && (
 
-            <div className="mt-5">
+                <>
 
-                <label className="text-sm text-zinc-400">
-                    Request URL
-                </label>
+                    {/* MAIN EXPERIMENT */}
 
-                <div className="mt-2 bg-black border border-zinc-800 rounded-lg p-3 font-mono text-xs text-zinc-300 break-all">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
-                    <span className="text-white">
-                        {method}
-                    </span>{" "}
+                        <RestRequestBuilder
+                            method={method}
+                            setMethod={setMethod}
 
-                    {endpoint}
+                            id={id}
+                            setId={setId}
 
-                </div>
+                            name={name}
+                            setName={setName}
 
-            </div>
+                            email={email}
+                            setEmail={setEmail}
 
+                            age={age}
+                            setAge={setAge}
 
-            {/* ID */}
+                            role={role}
+                            setRole={setRole}
 
-            {(method !== "POST") && (
+                            page={page}
+                            setPage={setPage}
 
-                <div className="mt-5">
+                            limit={limit}
+                            setLimit={setLimit}
 
-                    <label className="text-sm text-zinc-400">
-                        Resource ID
-                    </label>
+                            search={search}
+                            setSearch={setSearch}
 
-                    <input
-                        value={id}
-                        onChange={e =>
-                            setId(e.target.value)
-                        }
-                        placeholder={
-                            method === "GET"
-                                ? "Leave empty to fetch collection"
-                                : "User ID"
-                        }
-                        className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none"
-                    />
+                            filterRole={filterRole}
+                            setFilterRole={setFilterRole}
 
-                    <p className="text-xs text-zinc-600 mt-2">
-                        Leave empty for the collection endpoint:
-                        /users
-                    </p>
+                            sortBy={sortBy}
+                            setSortBy={setSortBy}
 
-                </div>
+                            order={order}
+                            setOrder={setOrder}
 
-            )}
+                            endpoint={endpoint}
+
+                            loading={loading}
+                            onExecute={executeRequest}
+                        />
 
 
-            {/* QUERY */}
+                        <div className="space-y-6">
 
-            {method === "GET" && !id && (
-
-                <div className="mt-6 border-t border-zinc-800 pt-5">
-
-                    <div className="text-sm font-medium">
-                        Query Parameters
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-
-                        <div>
-                            <label className="text-xs text-zinc-500">
-                                Page
-                            </label>
-
-                            <input
-                                value={page}
-                                onChange={e =>
-                                    setPage(e.target.value)
-                                }
-                                className="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5"
+                            <RestExecutionTrace
+                                trace={trace}
+                                loading={loading}
                             />
-                        </div>
 
-                        <div>
-                            <label className="text-xs text-zinc-500">
-                                Limit
-                            </label>
-
-                            <input
-                                value={limit}
-                                onChange={e =>
-                                    setLimit(e.target.value)
-                                }
-                                className="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5"
+                            <RestResponse
+                                response={response}
+                                error={error}
                             />
-                        </div>
-
-                        <div>
-                            <label className="text-xs text-zinc-500">
-                                Search
-                            </label>
-
-                            <input
-                                value={search}
-                                onChange={e =>
-                                    setSearch(e.target.value)
-                                }
-                                placeholder="name or email"
-                                className="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-xs text-zinc-500">
-                                Role
-                            </label>
-
-                            <select
-                                value={filterRole}
-                                onChange={e =>
-                                    setFilterRole(e.target.value)
-                                }
-                                className="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5"
-                            >
-                                <option value="">
-                                    All
-                                </option>
-
-                                <option value="USER">
-                                    USER
-                                </option>
-
-                                <option value="ADMIN">
-                                    ADMIN
-                                </option>
-
-                                <option value="MODERATOR">
-                                    MODERATOR
-                                </option>
-
-                            </select>
 
                         </div>
 
                     </div>
 
 
-                    <div className="grid grid-cols-2 gap-4 mt-4">
+                    {/* CONCEPT EXPLANATION */}
 
-                        <select
-                            value={sortBy}
-                            onChange={e =>
-                                setSortBy(e.target.value)
-                            }
-                            className="bg-zinc-950 border border-zinc-800 rounded-lg p-2.5"
-                        >
-                            <option value="createdAt">
-                                createdAt
-                            </option>
+                    <div className="mt-8 border border-zinc-800 rounded-xl bg-zinc-900/40 p-6">
 
-                            <option value="name">
-                                name
-                            </option>
+                        <h2 className="text-xl font-medium">
+                            What actually happened?
+                        </h2>
 
-                            <option value="email">
-                                email
-                            </option>
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-5">
 
-                            <option value="age">
-                                age
-                            </option>
+                            {[
+                                [
+                                    "1",
+                                    "HTTP Request",
+                                    "Your browser sent a real HTTP request to Express."
+                                ],
+                                [
+                                    "2",
+                                    "Express",
+                                    "Express matched the route and executed middleware."
+                                ],
+                                [
+                                    "3",
+                                    "Service + Prisma",
+                                    "The controller called the service which queried PostgreSQL through Prisma."
+                                ],
+                                [
+                                    "4",
+                                    "HTTP Response",
+                                    "Express returned the actual status code and JSON response."
+                                ],
+                            ].map(([number, title, description]) => (
 
-                        </select>
-
-
-                        <select
-                            value={order}
-                            onChange={e =>
-                                setOrder(e.target.value)
-                            }
-                            className="bg-zinc-950 border border-zinc-800 rounded-lg p-2.5"
-                        >
-                            <option value="desc">
-                                DESC
-                            </option>
-
-                            <option value="asc">
-                                ASC
-                            </option>
-
-                        </select>
-
-                    </div>
-
-                </div>
-
-            )}
-
-
-            {/* BODY */}
-
-            {needsBody && (
-
-                <div className="mt-6 border-t border-zinc-800 pt-5">
-
-                    <div className="text-sm font-medium">
-                        Request Body
-                    </div>
-
-                    <div className="space-y-4 mt-4">
-
-                        <div>
-                            <label className="text-xs text-zinc-500">
-                                Name
-                            </label>
-
-                            <input
-                                value={name}
-                                onChange={e =>
-                                    setName(e.target.value)
-                                }
-                                className="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3"
-                            />
-
-                        </div>
-
-
-                        <div>
-                            <label className="text-xs text-zinc-500">
-                                Email
-                            </label>
-
-                            <input
-                                value={email}
-                                onChange={e =>
-                                    setEmail(e.target.value)
-                                }
-                                className="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3"
-                            />
-
-                        </div>
-
-
-                        <div className="grid grid-cols-2 gap-4">
-
-                            <div>
-
-                                <label className="text-xs text-zinc-500">
-                                    Age
-                                </label>
-
-                                <input
-                                    value={age}
-                                    onChange={e =>
-                                        setAge(e.target.value)
-                                    }
-                                    type="number"
-                                    className="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3"
-                                />
-
-                            </div>
-
-
-                            <div>
-
-                                <label className="text-xs text-zinc-500">
-                                    Role
-                                </label>
-
-                                <select
-                                    value={role}
-                                    onChange={e =>
-                                        setRole(e.target.value)
-                                    }
-                                    className="mt-1 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3"
+                                <div
+                                    key={number}
+                                    className="border border-zinc-800 rounded-lg p-4 bg-zinc-950"
                                 >
 
-                                    <option value="USER">
-                                        USER
-                                    </option>
+                                    <div className="text-xs text-zinc-600">
+                                        STEP {number}
+                                    </div>
 
-                                    <option value="ADMIN">
-                                        ADMIN
-                                    </option>
+                                    <h3 className="font-medium mt-2">
+                                        {title}
+                                    </h3>
 
-                                    <option value="MODERATOR">
-                                        MODERATOR
-                                    </option>
+                                    <p className="text-sm text-zinc-500 mt-2 leading-6">
+                                        {description}
+                                    </p>
 
-                                </select>
+                                </div>
 
-                            </div>
+                            ))}
 
                         </div>
 
+                    </div>
 
-                        <pre className="bg-black border border-zinc-800 rounded-lg p-4 text-xs text-zinc-400 overflow-auto">
-                            {JSON.stringify(
-                                {
-                                    name,
-                                    email,
-                                    age:
-                                        age === ""
-                                            ? undefined
-                                            : Number(age),
-                                    role,
-                                },
-                                null,
-                                2
-                            )}
-                        </pre>
+                </>
+
+            )}
+
+
+            {activeSection === "pagination" && (
+
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+                    <div className="border border-zinc-800 rounded-xl bg-zinc-900/50 p-6">
+
+                        <h2 className="text-xl font-medium">
+                            Pagination Experiment
+                        </h2>
+
+                        <p className="text-sm text-zinc-500 mt-1">
+                            Observe how page and limit change the database query.
+                        </p>
+
+                        <div className="mt-6 space-y-4">
+
+                            <div className="grid grid-cols-2 gap-4">
+
+                                <div>
+                                    <label className="text-sm text-zinc-400">
+                                        Page
+                                    </label>
+
+                                    <input
+                                        value={page}
+                                        onChange={e =>
+                                            setPage(e.target.value)
+                                        }
+                                        type="number"
+                                        min="1"
+                                        className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-sm text-zinc-400">
+                                        Limit
+                                    </label>
+
+                                    <input
+                                        value={limit}
+                                        onChange={e =>
+                                            setLimit(e.target.value)
+                                        }
+                                        type="number"
+                                        min="1"
+                                        max="100"
+                                        className="mt-2 w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none"
+                                    />
+                                </div>
+
+                            </div>
+
+                            <div className="bg-black border border-zinc-800 rounded-lg p-4 font-mono text-sm">
+
+                                <div className="text-zinc-500">
+                                    Calculated database window
+                                </div>
+
+                                <div className="mt-3">
+
+                                    OFFSET{" "}
+                                    <span className="text-white">
+                                        {Math.max(
+                                            (Number(page) - 1) *
+                                            Number(limit),
+                                            0
+                                        )}
+                                    </span>
+
+                                </div>
+
+                                <div>
+
+                                    LIMIT{" "}
+                                    <span className="text-white">
+                                        {limit || 0}
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setMethod("GET");
+                                    setId("");
+                                    setTimeout(() => {
+                                        executeRequest();
+                                    }, 0);
+                                }}
+                                className="w-full bg-white text-black rounded-lg p-3 font-medium"
+                            >
+                                Run Pagination Query
+                            </button>
+
+                        </div>
 
                     </div>
+
+
+                    <RestExecutionTrace
+                        trace={trace}
+                        loading={loading}
+                    />
 
                 </div>
 
             )}
 
 
-            {/* SEND */}
+            {activeSection === "errors" && (
 
-            <button
-                onClick={onExecute}
-                disabled={loading}
-                className="w-full mt-6 bg-white text-black rounded-lg p-3 font-medium disabled:opacity-50"
-            >
-                {loading
-                    ? "Sending Request..."
-                    : "Send Request"}
-            </button>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+                    <div className="border border-zinc-800 rounded-xl bg-zinc-900/50 p-6">
+
+                        <h2 className="text-xl font-medium">
+                            Break the API
+                        </h2>
+
+                        <p className="text-zinc-500 text-sm mt-1">
+                            Deliberately send invalid requests and observe
+                            how the backend responds.
+                        </p>
 
 
-            <div className="mt-4 text-xs text-zinc-600">
+                        <div className="mt-6 space-y-4">
 
-                Backend:
+                            {/* EXPERIMENT 1 */}
+                            <div className="border border-zinc-800 rounded-lg bg-zinc-950 overflow-hidden">
+                                <div className="border-b border-zinc-800 bg-zinc-900/50 p-3 px-4 text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                                    Experiment
+                                </div>
+                                <div className="p-4 space-y-4">
+                                    <div className="font-medium text-white">
+                                        Missing required fields
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <div className="text-zinc-500 mb-1">What we're testing:</div>
+                                            <div className="text-zinc-300">POST validation</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-500 mb-1">Expected:</div>
+                                            <div className="text-zinc-300">400 Bad Request</div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setMethod("POST");
+                                            setName("");
+                                            setEmail("");
+                                            setAge("");
+                                        }}
+                                        className="w-full bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg p-2.5 text-sm font-medium transition-colors"
+                                    >
+                                        Load Experiment
+                                    </button>
+                                </div>
+                            </div>
 
-                <span className="text-zinc-400 ml-1">
-                    Express + Prisma + PostgreSQL
-                </span>
+                            {/* EXPERIMENT 2 */}
+                            <div className="border border-zinc-800 rounded-lg bg-zinc-950 overflow-hidden">
+                                <div className="border-b border-zinc-800 bg-zinc-900/50 p-3 px-4 text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                                    Experiment
+                                </div>
+                                <div className="p-4 space-y-4">
+                                    <div className="font-medium text-white">
+                                        Invalid email
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <div className="text-zinc-500 mb-1">What we're testing:</div>
+                                            <div className="text-zinc-300">Data normalization</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-500 mb-1">Expected:</div>
+                                            <div className="text-zinc-300">validation failure</div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setMethod("POST");
+                                            setName("Test User");
+                                            setEmail("not-an-email");
+                                            setAge("21");
+                                        }}
+                                        className="w-full bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg p-2.5 text-sm font-medium transition-colors"
+                                    >
+                                        Load Experiment
+                                    </button>
+                                </div>
+                            </div>
 
-            </div>
+                            {/* EXPERIMENT 3 */}
+                            <div className="border border-zinc-800 rounded-lg bg-zinc-950 overflow-hidden">
+                                <div className="border-b border-zinc-800 bg-zinc-900/50 p-3 px-4 text-xs font-medium text-zinc-400 uppercase tracking-wider">
+                                    Experiment
+                                </div>
+                                <div className="p-4 space-y-4">
+                                    <div className="font-medium text-white">
+                                        Request non-existent user
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div>
+                                            <div className="text-zinc-500 mb-1">What we're testing:</div>
+                                            <div className="text-zinc-300">GET missing resource</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-zinc-500 mb-1">Expected:</div>
+                                            <div className="text-zinc-300">404 Not Found</div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setMethod("GET");
+                                            setId("does-not-exist");
+                                        }}
+                                        className="w-full bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg p-2.5 text-sm font-medium transition-colors"
+                                    >
+                                        Load Experiment
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div className="text-sm text-zinc-500 text-center pt-2">
+                                Tip: After loading an experiment, scroll up to the Request Builder and click <strong>Send Request</strong>.
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <RestResponse
+                        response={response}
+                        error={error}
+                    />
+
+                </div>
+
+            )}
+
+
+            {activeSection === "concepts" && (
+
+                <RestNotes />
+
+            )}
 
         </div>
     );
