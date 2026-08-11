@@ -9,9 +9,14 @@ import restRoutes from './routes/rest.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 const app = express();
 
+const frontendUrls = [
+    'http://localhost:3000',
+    process.env.FRONTEND_URL
+].filter(Boolean);
+
 app.use(
     cors({
-        origin: 'http://localhost:3000',
+        origin: frontendUrls,
         credentials: true
     })
 );
