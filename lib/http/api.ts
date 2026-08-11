@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000";
+const API_URL = "/api-proxy";
 
 export type HttpMethod =
     | "GET"
@@ -29,7 +29,8 @@ export interface HttpResponse {
 export async function sendHttpRequest(
     request: HttpRequestOptions
 ): Promise<HttpResponse> {
-    const url = new URL(`${API_URL}${request.path}`);
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : "http://localhost:3000";
+    const url = new URL(`${API_URL}${request.path}`, baseUrl);
 
     Object.entries(request.query ?? {}).forEach(([key, value]) => {
         if (key && value !== undefined && value !== "") {
