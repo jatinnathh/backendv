@@ -1,5 +1,5 @@
 import React from "react";
-import { HttpRequestOptions } from "../../../lib/http/api";
+import { HttpRequestOptions, HttpMethod } from "../../../lib/http/api";
 import { ExperimentConfig } from "../../../lib/http/labs";
 
 export const RequestBuilder = ({ 
@@ -40,7 +40,7 @@ export const RequestBuilder = ({
             <div className="flex items-center space-x-2">
                 <select 
                     value={request.method} 
-                    onChange={e => updateRequest({ method: e.target.value })}
+                    onChange={e => updateRequest({ method: e.target.value as HttpMethod })}
                     className="bg-neutral-900 border border-neutral-700 text-white rounded px-3 py-2 font-mono text-sm outline-none focus:border-blue-500"
                 >
                     {lab.allowedMethods.map(m => (
