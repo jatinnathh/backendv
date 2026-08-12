@@ -3,26 +3,16 @@ export function conditionalMiddleware(
     res,
     next
 ) {
+    if (!req.middlewareTrace) req.middlewareTrace = [];
 
-    const isAdmin = req.body.admin === 'true';
-
-    if (!isAdmin) {
-        return res.status(403).json({
-            error: 'conditional middleware blocked the request ',
-            trace: [
-                {
-                    step: 'conditional_middlware',
-                    success: false,
-                    result: 'blocked',
-                },
-            ],
+    if (req.query.admin === "true") {
+        req.middlewareTrace.push({ step: "conditional", layer: "middleware", event: "completed", success: true });
+        next();
+    } else {
+        req.middlewareTrace.push({ step: "conditional", layer: "middleware", event: "blocked", success: false, status: 403, details: { reason: "admin=true required" } });
+        res.status(403).json({
+            error: "Forbidden. Admin access required.",
+            trace: req.middlewareTrace,
         });
     }
-
-    req.middlewareData = {
-        condition: 'admin===true',
-        result: 'passed',
-    };
-
-    next();
 }

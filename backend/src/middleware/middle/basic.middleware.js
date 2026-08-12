@@ -1,6 +1,7 @@
-import { timeStamp } from "console"
-
 export function basicMiddleware(req, res, next) {
+    if (!req.middlewareTrace) req.middlewareTrace = [];
+    req.middlewareTrace.push({ step: "basic", layer: "middleware", event: "completed", success: true });
+    
     try {
         req.middlewareData = {
             executed: true,
@@ -9,6 +10,7 @@ export function basicMiddleware(req, res, next) {
     }
     catch(err){
         next(err);
+        return;
     }
     next();
 }

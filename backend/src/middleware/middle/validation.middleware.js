@@ -1,66 +1,31 @@
-// src/middleware/validation.middleware.js
-
 export function validationMiddleware(
     req,
     res,
     next
 ) {
-
-    const {
-        name,
-        age,
-    } = req.body;
+    if (!req.middlewareTrace) req.middlewareTrace = [];
+    
+    const { name, age } = req.body || {};
 
     const errors = [];
 
-
-    if (
-        !name ||
-        typeof name !== "string" ||
-        name.trim() === ""
-    ) {
-        errors.push(
-            "name is required"
-        );
+    if (!name || typeof name !== "string") {
+        errors.push("name is required and must be a string");
     }
 
-
-    if (
-        age === undefined ||
-        typeof age !== "number" ||
-        age < 0
-    ) {
-        errors.push(
-            "age must be a positive number"
-        );
+    if (!age || typeof age !== "number" || age < 0) {
+        errors.push("age is required and must be a positive number");
     }
-
 
     if (errors.length > 0) {
-
+        req.middlewareTrace.push({ step: "validation", layer: "middleware", event: "blocked", success: false, status: 400, details: { errors } });
         return res.status(400).json({
-
             error: "Validation failed",
-
-            errors,
-
-            trace: [
-                {
-                    step: "validation_middleware",
-                    success: false,
-                    errors,
-                },
-            ],
-
+            details: errors,
+            trace: req.middlewareTrace,
         });
     }
 
-
-    req.validatedBody = {
-        name: name.trim(),
-        age,
-    };
-
-
+    req.middlewareTrace.push({ step: "validation", layer: "middleware", event: "completed", success: true });
     next();
 }

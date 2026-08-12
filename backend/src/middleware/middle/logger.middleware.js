@@ -1,11 +1,9 @@
 export function loggerMiddleware(req, res, next) {
-    req.requestLog = {
-        method: req.method,
-        url: req.originalUrl,
-        ip: req.ip,
-        userAgent: req.headers['user-agent'],
-        timestamp: new Date().toISOString(),
-    };
-    console.log(`[LOGGER] Request ${req.method} ${req.originalUrl} from ${req.ip}`);
+    if (!req.middlewareTrace) req.middlewareTrace = [];
+    req.middlewareTrace.push({ step: "logger", layer: "middleware", event: "completed", success: true });
+
+    console.log(
+        `[LOGGER] ${req.method} ${req.originalUrl}`
+    );
     next();
 }

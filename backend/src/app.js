@@ -5,6 +5,12 @@ import authRoutes from './routes/auth.routes.js';
 import httpRoutes from './routes/http.routes.js';
 import notifyRoutes from './routes/notify.routes.js';
 import restRoutes from './routes/rest.routes.js';
+import middlewareRoutes
+    from "./routes/middleware.routes.js";
+
+import {
+    errorMiddleware,
+} from "./middleware/middle/error.middleware.js";
 
 import { errorHandler } from './middleware/error.middleware.js';
 const app = express();
@@ -38,6 +44,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/http', httpRoutes);
 app.use('/api/notify', notifyRoutes);
 app.use('/api/rest/v1', restRoutes);
-app.use(errorHandler)
+app.use(
+    "/api/middleware",
+    middlewareRoutes
+);
+app.use(
+    errorMiddleware
+);
+
+// app.use(errorHandler)
 
 export default app;
