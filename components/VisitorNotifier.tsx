@@ -10,7 +10,7 @@ export default function VisitorNotifier() {
     hasNotified.current = true;
 
     // Fire and forget
-    fetch('/api/notify', {
+    fetch('/api-proxy/api/notify', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
